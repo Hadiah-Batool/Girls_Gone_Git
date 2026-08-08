@@ -70,6 +70,11 @@ class AppTheme {
         surfaceTintColor: Colors.transparent,
         labelBehavior: NavigationDestinationLabelBehavior.alwaysShow,
       ),
+      dialogTheme: DialogThemeData(
+        backgroundColor: AppColors.surfaceBright,
+        titleTextStyle: AppTextStyles.headlineMd.copyWith(color: AppColors.onSurface),
+        contentTextStyle: AppTextStyles.bodyMd.copyWith(color: AppColors.onSurface),
+      ),
       cardTheme: CardThemeData(
         color: AppColors.surfaceContainerLowest,
         elevation: 0,
@@ -89,7 +94,14 @@ class AppTheme {
       ),
       inputDecorationTheme: InputDecorationTheme(
         filled: true,
-        fillColor: AppColors.surfaceBright,
+        fillColor: AppColors.surfaceContainerLowest,
+        labelStyle: AppTextStyles.bodySm.copyWith(
+          color: AppColors.onSurfaceVariant,
+        ),
+        floatingLabelStyle: AppTextStyles.bodySm.copyWith(
+          color: AppColors.primary,
+          fontWeight: FontWeight.bold,
+        ),
         border: OutlineInputBorder(
           borderRadius: BorderRadius.circular(8),
           borderSide: BorderSide(
@@ -104,10 +116,10 @@ class AppTheme {
         ),
         focusedBorder: OutlineInputBorder(
           borderRadius: BorderRadius.circular(8),
-          borderSide: const BorderSide(color: AppColors.primary),
+          borderSide: const BorderSide(color: AppColors.primary, width: 2),
         ),
         hintStyle: AppTextStyles.bodySm.copyWith(
-          color: AppColors.onSurfaceVariant.withValues(alpha: 0.5),
+          color: AppColors.onSurfaceVariant.withValues(alpha: 0.7),
         ),
       ),
     );
@@ -123,6 +135,7 @@ class AppTextStyles {
         height: 48 / 40,
         letterSpacing: -0.02 * 40,
         fontWeight: FontWeight.w800,
+        color: AppColors.onSurface,
       );
 
   static TextStyle get headlineLg => GoogleFonts.manrope(
@@ -130,36 +143,42 @@ class AppTextStyles {
         height: 40 / 32,
         letterSpacing: -0.01 * 32,
         fontWeight: FontWeight.w700,
+        color: AppColors.onSurface,
       );
 
   static TextStyle get headlineLgMobile => GoogleFonts.manrope(
         fontSize: 26,
         height: 32 / 26,
         fontWeight: FontWeight.w700,
+        color: AppColors.onSurface,
       );
 
   static TextStyle get headlineMd => GoogleFonts.manrope(
         fontSize: 24,
         height: 32 / 24,
         fontWeight: FontWeight.w600,
+        color: AppColors.onSurface,
       );
 
   static TextStyle get bodyLg => GoogleFonts.hankenGrotesk(
         fontSize: 18,
         height: 28 / 18,
         fontWeight: FontWeight.w400,
+        color: AppColors.onSurface,
       );
 
   static TextStyle get bodyMd => GoogleFonts.hankenGrotesk(
         fontSize: 16,
         height: 24 / 16,
         fontWeight: FontWeight.w400,
+        color: AppColors.onSurface,
       );
 
   static TextStyle get bodySm => GoogleFonts.hankenGrotesk(
         fontSize: 14,
         height: 20 / 14,
         fontWeight: FontWeight.w400,
+        color: AppColors.onSurface,
       );
 
   static TextStyle get dataMono => GoogleFonts.hankenGrotesk(
@@ -167,6 +186,7 @@ class AppTextStyles {
         height: 18 / 14,
         letterSpacing: 0.02 * 14,
         fontWeight: FontWeight.w600,
+        color: AppColors.onSurface,
       );
 
   static TextStyle get labelCaps => GoogleFonts.hankenGrotesk(
@@ -174,6 +194,7 @@ class AppTextStyles {
         height: 16 / 12,
         letterSpacing: 0.05 * 12,
         fontWeight: FontWeight.w700,
+        color: AppColors.onSurface,
       );
 
   static TextTheme get textTheme => TextTheme(

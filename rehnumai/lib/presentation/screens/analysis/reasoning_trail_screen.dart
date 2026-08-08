@@ -1,49 +1,204 @@
-import 'dart:math' as math;
+// lib/presentation/screens/analysis/reasoning_trail_screen.dart
+//
+// Live reasoning trail UI — executes the multi-agent LLM analysis chain
+// (Pattern Analyst, Root-Cause Reasoner, Self-Critique Agent, Intervention Planner)
+// using the OpenRouter/Gemini API for a selected student or scanned sheet.
+
 import 'package:flutter/material.dart';
+import 'package:flutter/services.dart';
+import 'package:share_plus/share_plus.dart';
 import '../../../core/constants/app_colors.dart';
 import '../../../core/constants/app_theme.dart';
+import '../../../core/services/gemini_service.dart';
+import '../../../data/models/mock_students.dart';
+import '../../../data/models/student_model.dart';
+import '../../../domain/agents/agent_orchestrator.dart';
+import '../../../domain/agents/agent_state.dart';
 import '../../widgets/app_top_bar.dart';
 
-// ─── Data for the sparkline ───────────────────────────────────────────────────
-
-const List<double> _attendanceData = [
-  90, 88, 85, 80, 75, 70, 72, 68, 65, 60, 58, 55
-];
-
-// ─── Screen ──────────────────────────────────────────────────────────────────
-
 class ReasoningTrailScreen extends StatefulWidget {
-  const ReasoningTrailScreen({super.key});
+  final String? scannedText;
+  final Student? student;
+  final bool autoRun;
+
+  const ReasoningTrailScreen({
+    super.key,
+    this.scannedText,
+    this.student,
+    this.autoRun = false,
+  });
 
   @override
   State<ReasoningTrailScreen> createState() => _ReasoningTrailScreenState();
 }
 
-class _ReasoningTrailScreenState extends State<ReasoningTrailScreen>
-    with SingleTickerProviderStateMixin {
-  late AnimationController _lineController;
-  late Animation<double> _lineAnimation;
+class _ReasoningTrailScreenState extends State<ReasoningTrailScreen> {
+  final List<AgentReasoningEvent> _events = [];
+  final ScrollController _scrollController = ScrollController();
+  final TextEditingController _overrideController = TextEditingController();
+
+  bool _isRunning = false;
+  bool _isComplete = false;
+  bool _isStructuring = false;
   bool _teacherOverrideOn = false;
-  final _correctionController = TextEditingController();
+  String? _errorMessage;
+  Student? _currentStudent;
+  Map<String, dynamic>? _finalSummary;
 
   @override
   void initState() {
     super.initState();
-    _lineController = AnimationController(
-      duration: const Duration(milliseconds: 2000),
-      vsync: this,
-    )..forward();
-    _lineAnimation = CurvedAnimation(
-      parent: _lineController,
-      curve: Curves.easeOut,
-    );
+    _currentStudent = widget.student ?? mockStudents.first;
+    if (widget.autoRun || widget.scannedText != null) {
+      _runLiveAnalysis();
+    }
   }
 
   @override
   void dispose() {
-    _lineController.dispose();
-    _correctionController.dispose();
+    _scrollController.dispose();
+    _overrideController.dispose();
     super.dispose();
+  }
+
+  Future<void> _runLiveAnalysis() async {
+    setState(() {
+      _isStructuring = widget.scannedText != null && widget.scannedText!.trim().isNotEmpty;
+      _errorMessage = null;
+      _events.clear();
+      _isComplete = false;
+      _isRunning = true;
+    });
+
+    Student targetStudent = _currentStudent ?? mockStudents.first;
+
+    if (widget.scannedText != null && widget.scannedText!.trim().isNotEmpty) {
+      try {
+        targetStudent = await _structureOcrText(widget.scannedText!);
+      } catch (e) {
+        if (!mounted) return;
+        setState(() {
+          _isStructuring = false;
+          _isRunning = false;
+          _errorMessage = 'OCR Structuring Error: $e';
+        });
+        return;
+      }
+    }
+
+    if (!mounted) return;
+
+    setState(() {
+      _currentStudent = targetStudent;
+      _isStructuring = false;
+    });
+
+    try {
+      final orchestrator = AgentOrchestrator();
+      await for (final event in orchestrator.analyzeStudentRisk(targetStudent)) {
+        if (!mounted) return;
+
+        setState(() {
+          _events.add(event);
+
+          if (event.step == AgentStep.complete) {
+            _isComplete = true;
+            _isRunning = false;
+            _finalSummary = event.outputJson;
+          }
+        });
+
+        _scrollToBottom();
+      }
+    } catch (e) {
+      if (!mounted) return;
+      setState(() {
+        _isRunning = false;
+        _isStructuring = false;
+        _errorMessage = e.toString();
+      });
+    }
+  }
+
+  void _scrollToBottom() {
+    WidgetsBinding.instance.addPostFrameCallback((_) {
+      if (_scrollController.hasClients) {
+        _scrollController.animateTo(
+          _scrollController.position.maxScrollExtent,
+          duration: const Duration(milliseconds: 300),
+          curve: Curves.easeOut,
+        );
+      }
+    });
+  }
+
+  Future<Student> _structureOcrText(String ocrText) async {
+    const systemPrompt = '''
+You are a data extraction specialist. Extract structured student data from raw OCR text into JSON:
+{
+  "id": "stu_scan_001",
+  "name": "<student name or 'Scanned Student'>",
+  "grade": "<grade or '7-B'>",
+  "attendance": [{"date": "2026-07-01", "is_present": true}],
+  "fees": [{"due_date": "2026-07-01", "paid_date": null, "amount_due": 2500.0, "amount_paid": 0.0}],
+  "exam_scores": [{"date": "2026-07-01", "score": 55.0}],
+  "teacher_notes": []
+}
+''';
+    final response = await OpenRouterService.instance.chatWithFallback(
+      messages: [
+        {'role': 'system', 'content': systemPrompt},
+        {'role': 'user', 'content': ocrText},
+      ],
+      temperature: 0.2,
+      maxTokens: 1000,
+    );
+    return _parseStudentFromJson(response);
+  }
+
+  Student _parseStudentFromJson(Map<String, dynamic> json) {
+    final attendanceList = <AttendanceRecord>[];
+    if (json['attendance'] is List) {
+      for (final a in json['attendance'] as List) {
+        try {
+          attendanceList.add(AttendanceRecord(
+            date: DateTime.parse(a['date'] as String),
+            isPresent: a['is_present'] as bool? ?? true,
+          ));
+        } catch (_) {}
+      }
+    }
+    final feeList = <FeeRecord>[];
+    if (json['fees'] is List) {
+      for (final f in json['fees'] as List) {
+        try {
+          feeList.add(FeeRecord(
+            dueDate: DateTime.parse(f['due_date'] as String),
+            paidDate: f['paid_date'] != null ? DateTime.parse(f['paid_date'] as String) : null,
+            amountDue: (f['amount_due'] as num?)?.toDouble() ?? 2500.0,
+            amountPaid: (f['amount_paid'] as num?)?.toDouble() ?? 0.0,
+          ));
+        } catch (_) {}
+      }
+    }
+    final scores = <DateTime, double>{};
+    if (json['exam_scores'] is List) {
+      for (final s in json['exam_scores'] as List) {
+        try {
+          scores[DateTime.parse(s['date'] as String)] = (s['score'] as num?)?.toDouble() ?? 50.0;
+        } catch (_) {}
+      }
+    }
+
+    return Student(
+      id: json['id'] as String? ?? 'stu_scan_001',
+      name: json['name'] as String? ?? 'Scanned Student',
+      grade: json['grade'] as String? ?? '7-B',
+      attendance: attendanceList.isNotEmpty ? attendanceList : mockStudents.first.attendance,
+      fees: feeList.isNotEmpty ? feeList : mockStudents.first.fees,
+      examScores: scores.isNotEmpty ? scores : mockStudents.first.examScores,
+      teacherNotes: const [],
+    );
   }
 
   @override
@@ -51,505 +206,361 @@ class _ReasoningTrailScreenState extends State<ReasoningTrailScreen>
     return Scaffold(
       backgroundColor: AppColors.surfaceBright,
       appBar: const AppTopBar(),
-      body: SingleChildScrollView(
-        padding: const EdgeInsets.fromLTRB(16, 8, 16, 40),
-        child: Column(
-          crossAxisAlignment: CrossAxisAlignment.start,
-          children: [
-            // ── Student header card
-            _StudentHeaderCard(),
-            const SizedBox(height: 24),
-
-            // ── Reasoning Trail section
-            _SectionTitle(
-              icon: Icons.psychology,
-              title: 'Reasoning Trail',
-            ),
-            const SizedBox(height: 16),
-            _ReasoningTimeline(),
-            const SizedBox(height: 24),
-
-            // ── Attendance sparkline
-            _SectionTitle(
-              icon: Icons.show_chart,
-              title: 'Attendance Trend',
-            ),
-            const SizedBox(height: 12),
-            _AttendanceSparkline(animation: _lineAnimation),
-            const SizedBox(height: 24),
-
-            // ── Confidence meter
-            _ConfidenceMeter(confidence: 0.82),
-            const SizedBox(height: 24),
-
-            // ── Teacher override
-            _TeacherOverrideCard(
-              isOn: _teacherOverrideOn,
-              onToggle: (v) => setState(() => _teacherOverrideOn = v),
-              controller: _correctionController,
-            ),
-          ],
-        ),
-      ),
-    );
-  }
-}
-
-// ─── Student Header Card ─────────────────────────────────────────────────────
-
-class _StudentHeaderCard extends StatelessWidget {
-  @override
-  Widget build(BuildContext context) {
-    return Container(
-      decoration: BoxDecoration(
-        color: AppColors.surfaceContainerLowest,
-        borderRadius: BorderRadius.circular(16),
-        border: Border.all(color: AppColors.surfaceVariant),
-        boxShadow: [
-          BoxShadow(
-            color: Colors.black.withValues(alpha: 0.04),
-            blurRadius: 8,
-            offset: const Offset(0, 2),
-          ),
-        ],
-      ),
-      clipBehavior: Clip.antiAlias,
-      child: Row(
+      body: Column(
         children: [
-          // Left accent bar
-          Container(width: 4, color: AppColors.primary),
-          const SizedBox(width: 16),
-          // Avatar
-          Container(
-            width: 64,
-            height: 64,
-            margin: const EdgeInsets.symmetric(vertical: 16),
-            decoration: BoxDecoration(
-              color: AppColors.primaryFixed,
-              borderRadius: BorderRadius.circular(12),
-              border: Border.all(color: AppColors.outlineVariant),
+          if (_isRunning || _isStructuring)
+            const LinearProgressIndicator(
+              backgroundColor: AppColors.surfaceVariant,
+              valueColor: AlwaysStoppedAnimation<Color>(AppColors.primary),
             ),
-            child: Center(
-              child: Text(
-                'AB',
-                style: AppTextStyles.headlineMd.copyWith(
-                  color: AppColors.primary,
-                ),
-              ),
-            ),
-          ),
-          const SizedBox(width: 16),
-          // Info
           Expanded(
-            child: Padding(
-              padding: const EdgeInsets.symmetric(vertical: 16),
+            child: SingleChildScrollView(
+              controller: _scrollController,
+              padding: const EdgeInsets.fromLTRB(16, 12, 16, 32),
               child: Column(
                 crossAxisAlignment: CrossAxisAlignment.start,
                 children: [
+                  if (_currentStudent != null) ...[
+                    _StudentHeaderCard(
+                      student: _currentStudent!,
+                      isRunning: _isRunning,
+                      onRunAnalysis: _runLiveAnalysis,
+                    ),
+                    const SizedBox(height: 20),
+                  ],
                   Row(
-                    crossAxisAlignment: CrossAxisAlignment.start,
+                    mainAxisAlignment: MainAxisAlignment.spaceBetween,
                     children: [
-                      Expanded(
-                        child: Text(
-                          'Amina B.',
-                          style: AppTextStyles.headlineLgMobile.copyWith(
-                            color: AppColors.inkText,
-                          ),
+                      const Text(
+                        'Reasoning Trail',
+                        style: TextStyle(
+                          fontSize: 18,
+                          fontWeight: FontWeight.bold,
+                          color: AppColors.onSurface,
                         ),
                       ),
-                      // Risk badge
-                      Container(
-                        padding: const EdgeInsets.symmetric(
-                          horizontal: 10,
-                          vertical: 4,
+                      if (!_isRunning && !_isStructuring)
+                        TextButton.icon(
+                          onPressed: _runLiveAnalysis,
+                          icon: const Icon(Icons.refresh, size: 16),
+                          label: const Text('Re-run'),
                         ),
-                        decoration: BoxDecoration(
-                          color: AppColors.riskHigh.withValues(alpha: 0.1),
-                          borderRadius: BorderRadius.circular(999),
-                          border: Border.all(color: AppColors.riskHigh),
-                        ),
-                        child: Row(
-                          mainAxisSize: MainAxisSize.min,
+                    ],
+                  ),
+                  const SizedBox(height: 12),
+                  if (_errorMessage != null)
+                    _buildErrorCard()
+                  else if (_isStructuring)
+                    const Padding(
+                      padding: EdgeInsets.all(24.0),
+                      child: Center(child: Text('Structuring scanned sheet text with Gemini AI...')),
+                    )
+                  else if (_events.isEmpty && !_isRunning)
+                    Center(
+                      child: Padding(
+                        padding: const EdgeInsets.symmetric(vertical: 32),
+                        child: Column(
                           children: [
-                            Icon(
-                              Icons.warning,
-                              size: 14,
-                              color: AppColors.riskHigh,
-                            ),
-                            const SizedBox(width: 4),
+                            const Icon(Icons.auto_awesome, size: 48, color: AppColors.primary),
+                            const SizedBox(height: 12),
                             Text(
-                              'HIGH RISK',
-                              style: AppTextStyles.labelCaps.copyWith(
-                                color: AppColors.riskHigh,
-                                letterSpacing: 1,
-                              ),
+                              'Tap "Run AI Analysis" above to analyze ${_currentStudent?.name}\'s risk profile live.',
+                              textAlign: TextAlign.center,
+                              style: AppTextStyles.bodyMd.copyWith(color: AppColors.onSurfaceVariant),
                             ),
                           ],
                         ),
                       ),
-                    ],
-                  ),
-                  const SizedBox(height: 4),
-                  Text(
-                    'Class 5-A  •  ID: 4920',
-                    style: AppTextStyles.bodySm.copyWith(
-                      color: AppColors.onSurfaceVariant,
-                    ),
+                    )
+                  else
+                    ..._events.map((e) => _AgentEventCard(event: e)),
+                  const SizedBox(height: 20),
+                  _TeacherOverrideCard(
+                    isOn: _teacherOverrideOn,
+                    onToggle: (v) => setState(() => _teacherOverrideOn = v),
+                    controller: _overrideController,
                   ),
                 ],
               ),
             ),
           ),
-          const SizedBox(width: 12),
+          if (_isComplete && _finalSummary != null) _buildResultCard(),
         ],
       ),
     );
   }
-}
 
-// ─── Section Title ───────────────────────────────────────────────────────────
-
-class _SectionTitle extends StatelessWidget {
-  const _SectionTitle({required this.icon, required this.title});
-  final IconData icon;
-  final String title;
-
-  @override
-  Widget build(BuildContext context) {
-    return Row(
-      children: [
-        Icon(icon, color: AppColors.primary, size: 22),
-        const SizedBox(width: 8),
-        Text(
-          title,
-          style: AppTextStyles.headlineMd.copyWith(color: AppColors.inkText),
-        ),
-      ],
-    );
-  }
-}
-
-// ─── Reasoning Timeline ───────────────────────────────────────────────────────
-
-class _ReasoningTimeline extends StatelessWidget {
-  final List<_TrailStep> _steps = const [
-    _TrailStep(
-      number: '1',
-      title: 'Pattern Analysis',
-      body:
-          'Attendance dropped 20% over the last 4 weeks. Missing predominantly Tuesday and Thursday morning sessions.',
-      highlight: '20%',
-      highlightColor: AppColors.riskHigh,
-    ),
-    _TrailStep(
-      number: '2',
-      title: 'Contextual Cross-Reference',
-      body:
-          'Cross-referencing with peer data — 3 other students in the same neighbourhood show a correlated dip, suggesting a systemic, not individual, cause.',
-      highlight: '3 other students',
-      highlightColor: AppColors.secondary,
-    ),
-    _TrailStep(
-      number: '3',
-      title: 'Confidence Assessment',
-      body:
-          'Based on the pattern and contextual factors, confidence in financial strain as root cause is 82%. Teacher input can refine this score.',
-      highlight: '82%',
-      highlightColor: AppColors.tertiary,
-    ),
-  ];
-
-  @override
-  Widget build(BuildContext context) {
-    return IntrinsicHeight(
-      child: Row(
+  Widget _buildErrorCard() {
+    return Container(
+      padding: const EdgeInsets.all(16),
+      decoration: BoxDecoration(
+        color: AppColors.errorContainer,
+        borderRadius: BorderRadius.circular(12),
+        border: Border.all(color: AppColors.error.withValues(alpha: 0.3)),
+      ),
+      child: Column(
         crossAxisAlignment: CrossAxisAlignment.start,
         children: [
-          // Timeline line
-          Column(
+          Row(
             children: [
-              const SizedBox(height: 6),
-              Expanded(
-                child: Container(
-                  width: 1,
-                  color: AppColors.outlineVariant,
+              const Icon(Icons.error_outline, color: AppColors.error),
+              const SizedBox(width: 8),
+              Text(
+                'LLM Execution Error',
+                style: AppTextStyles.bodyLg.copyWith(
+                  fontWeight: FontWeight.bold,
+                  color: AppColors.onErrorContainer,
                 ),
               ),
             ],
           ),
-          const SizedBox(width: 16),
-          // Steps
-          Expanded(
-            child: Column(
-              children: _steps.map((step) {
-                return Padding(
-                  padding: const EdgeInsets.only(bottom: 20),
-                  child: _TimelineStep(step: step),
-                );
-              }).toList(),
+          const SizedBox(height: 8),
+          Text(
+            _errorMessage!,
+            style: AppTextStyles.bodySm.copyWith(color: AppColors.onErrorContainer),
+          ),
+          const SizedBox(height: 12),
+          ElevatedButton.icon(
+            onPressed: _runLiveAnalysis,
+            icon: const Icon(Icons.refresh, size: 16),
+            label: const Text('Try Again'),
+            style: ElevatedButton.styleFrom(
+              backgroundColor: AppColors.error,
+              foregroundColor: AppColors.onError,
             ),
           ),
         ],
       ),
     );
   }
-}
 
-class _TrailStep {
-  const _TrailStep({
-    required this.number,
-    required this.title,
-    required this.body,
-    this.highlight,
-    this.highlightColor,
-  });
-  final String number;
-  final String title;
-  final String body;
-  final String? highlight;
-  final Color? highlightColor;
-}
+  Widget _buildResultCard() {
+    final message = _finalSummary?['whatsapp_message'] as String? ?? 'No message.';
+    final rootCause = _finalSummary?['root_cause'] as String? ?? 'Financial Strain';
+    final confidence = _finalSummary?['confidence'] as String? ?? 'High';
 
-class _TimelineStep extends StatelessWidget {
-  const _TimelineStep({required this.step});
-  final _TrailStep step;
-
-  @override
-  Widget build(BuildContext context) {
-    final bodyParts = step.highlight != null
-        ? step.body.split(step.highlight!)
-        : [step.body];
-
-    return Row(
-      crossAxisAlignment: CrossAxisAlignment.start,
-      children: [
-        // Dot indicator
-        Container(
-          width: 14,
-          height: 14,
-          margin: const EdgeInsets.only(top: 3, right: 16),
-          decoration: BoxDecoration(
-            color: AppColors.surfaceBright,
-            shape: BoxShape.circle,
-            border: Border.all(color: AppColors.outline, width: 2),
+    return Container(
+      padding: const EdgeInsets.all(20),
+      decoration: BoxDecoration(
+        color: AppColors.surfaceContainerLowest,
+        boxShadow: [
+          BoxShadow(
+            color: Colors.black.withValues(alpha: 0.08),
+            blurRadius: 10,
+            offset: const Offset(0, -4),
           ),
-        ),
-        Expanded(
-          child: Column(
-            crossAxisAlignment: CrossAxisAlignment.start,
+        ],
+        borderRadius: const BorderRadius.vertical(top: Radius.circular(20)),
+      ),
+      child: Column(
+        crossAxisAlignment: CrossAxisAlignment.start,
+        mainAxisSize: MainAxisSize.min,
+        children: [
+          Row(
             children: [
-              Text(
-                '${step.number}. ${step.title}',
-                style: AppTextStyles.dataMono.copyWith(
-                  color: AppColors.onSurface,
+              Chip(
+                label: Text(
+                  rootCause,
+                  style: const TextStyle(fontWeight: FontWeight.bold, color: AppColors.onPrimaryContainer),
+                ),
+                backgroundColor: AppColors.primaryContainer,
+              ),
+              const SizedBox(width: 8),
+              Container(
+                padding: const EdgeInsets.symmetric(horizontal: 10, vertical: 6),
+                decoration: BoxDecoration(
+                  color: AppColors.surfaceContainerHigh,
+                  borderRadius: BorderRadius.circular(8),
+                ),
+                child: Text(
+                  'Confidence: $confidence',
+                  style: AppTextStyles.bodySm.copyWith(fontWeight: FontWeight.w600),
                 ),
               ),
-              const SizedBox(height: 6),
-              Container(
-                padding: const EdgeInsets.all(12),
-                decoration: BoxDecoration(
-                  color: AppColors.surfaceContainerLowest,
-                  borderRadius: BorderRadius.circular(12),
-                  border: Border.all(color: AppColors.surfaceVariant),
+            ],
+          ),
+          const SizedBox(height: 12),
+          Text(
+            'Suggested Intervention Message',
+            style: AppTextStyles.labelCaps.copyWith(color: AppColors.onSurfaceVariant),
+          ),
+          const SizedBox(height: 6),
+          Container(
+            padding: const EdgeInsets.all(14),
+            decoration: BoxDecoration(
+              color: AppColors.surfaceContainerLow,
+              borderRadius: BorderRadius.circular(12),
+              border: Border.all(color: AppColors.outlineVariant.withValues(alpha: 0.5)),
+            ),
+            child: Text(
+              message,
+              style: AppTextStyles.bodyMd.copyWith(color: AppColors.onSurface),
+            ),
+          ),
+          const SizedBox(height: 14),
+          Row(
+            children: [
+              Expanded(
+                child: OutlinedButton.icon(
+                  onPressed: () {
+                    Clipboard.setData(ClipboardData(text: message));
+                    ScaffoldMessenger.of(context).showSnackBar(
+                      const SnackBar(content: Text('Message copied to clipboard')),
+                    );
+                  },
+                  icon: const Icon(Icons.copy, size: 16),
+                  label: const Text('Copy'),
+                  style: OutlinedButton.styleFrom(
+                    foregroundColor: AppColors.onSurface,
+                    side: const BorderSide(color: AppColors.outline),
+                  ),
                 ),
-                child: RichText(
-                  text: TextSpan(
-                    style: AppTextStyles.bodyMd.copyWith(
-                      color: AppColors.onSurfaceVariant,
-                    ),
-                    children: step.highlight != null && bodyParts.length == 2
-                        ? [
-                            TextSpan(text: bodyParts[0]),
-                            TextSpan(
-                              text: step.highlight,
-                              style: AppTextStyles.bodyMd.copyWith(
-                                color: step.highlightColor,
-                                fontWeight: FontWeight.w700,
-                              ),
-                            ),
-                            TextSpan(text: bodyParts[1]),
-                          ]
-                        : [TextSpan(text: step.body)],
+              ),
+              const SizedBox(width: 10),
+              Expanded(
+                child: ElevatedButton.icon(
+                  onPressed: () {
+                    SharePlus.instance.share(ShareParams(text: message));
+                  },
+                  icon: const Icon(Icons.share, size: 16),
+                  label: const Text('Share'),
+                  style: ElevatedButton.styleFrom(
+                    backgroundColor: const Color(0xFF25D366),
+                    foregroundColor: Colors.white,
                   ),
                 ),
               ),
             ],
           ),
-        ),
-      ],
+        ],
+      ),
     );
   }
 }
 
-// ─── Attendance Sparkline ────────────────────────────────────────────────────
+class _StudentHeaderCard extends StatelessWidget {
+  final Student student;
+  final bool isRunning;
+  final VoidCallback onRunAnalysis;
 
-class _AttendanceSparkline extends StatelessWidget {
-  const _AttendanceSparkline({required this.animation});
-  final Animation<double> animation;
+  const _StudentHeaderCard({
+    required this.student,
+    required this.isRunning,
+    required this.onRunAnalysis,
+  });
 
   @override
   Widget build(BuildContext context) {
     return Container(
-      height: 120,
       padding: const EdgeInsets.all(16),
       decoration: BoxDecoration(
         color: AppColors.surfaceContainerLowest,
-        borderRadius: BorderRadius.circular(12),
-        border: Border.all(color: AppColors.surfaceVariant),
+        borderRadius: BorderRadius.circular(16),
+        border: Border.all(color: AppColors.outlineVariant.withValues(alpha: 0.5)),
       ),
-      child: AnimatedBuilder(
-        animation: animation,
-        builder: (context, _) {
-          return CustomPaint(
-            painter: _SparklinePainter(
-              data: _attendanceData,
-              progress: animation.value,
-              lineColor: AppColors.primary,
-              fillColor: AppColors.primary.withValues(alpha: 0.08),
-              dotColor: AppColors.riskHigh,
+      child: Column(
+        children: [
+          Row(
+            children: [
+              CircleAvatar(
+                radius: 24,
+                backgroundColor: AppColors.primaryContainer,
+                child: Text(
+                  student.name.isNotEmpty ? student.name[0] : 'S',
+                  style: AppTextStyles.headlineMd.copyWith(color: AppColors.onPrimaryContainer),
+                ),
+              ),
+              const SizedBox(width: 14),
+              Expanded(
+                child: Column(
+                  crossAxisAlignment: CrossAxisAlignment.start,
+                  children: [
+                    Text(
+                      student.name,
+                      style: AppTextStyles.bodyLg.copyWith(fontWeight: FontWeight.bold, color: AppColors.onSurface),
+                    ),
+                    const SizedBox(height: 2),
+                    Text(
+                      'Grade: ${student.grade}  •  Attendance: ${student.attendanceRate.toStringAsFixed(1)}%',
+                      style: AppTextStyles.bodySm.copyWith(color: AppColors.onSurfaceVariant),
+                    ),
+                  ],
+                ),
+              ),
+            ],
+          ),
+          const SizedBox(height: 14),
+          SizedBox(
+            width: double.infinity,
+            child: ElevatedButton.icon(
+              onPressed: isRunning ? null : onRunAnalysis,
+              icon: isRunning
+                  ? const SizedBox(
+                      width: 16,
+                      height: 16,
+                      child: CircularProgressIndicator(strokeWidth: 2, color: Colors.white),
+                    )
+                  : const Icon(Icons.auto_awesome, size: 18),
+              label: Text(isRunning ? 'Running LLM Analysis...' : 'Run AI Analysis'),
+              style: ElevatedButton.styleFrom(
+                backgroundColor: AppColors.primary,
+                foregroundColor: AppColors.onPrimary,
+                padding: const EdgeInsets.symmetric(vertical: 12),
+              ),
             ),
-          );
-        },
+          ),
+        ],
       ),
     );
   }
 }
 
-class _SparklinePainter extends CustomPainter {
-  const _SparklinePainter({
-    required this.data,
-    required this.progress,
-    required this.lineColor,
-    required this.fillColor,
-    required this.dotColor,
-  });
+class _AgentEventCard extends StatelessWidget {
+  final AgentReasoningEvent event;
 
-  final List<double> data;
-  final double progress;
-  final Color lineColor;
-  final Color fillColor;
-  final Color dotColor;
-
-  @override
-  void paint(Canvas canvas, Size size) {
-    if (data.isEmpty) return;
-
-    final minVal = data.reduce(math.min);
-    final maxVal = data.reduce(math.max);
-    final range = maxVal - minVal == 0 ? 1.0 : maxVal - minVal;
-
-    final points = List.generate(data.length, (i) {
-      final x = i / (data.length - 1) * size.width;
-      final y = size.height - ((data[i] - minVal) / range) * size.height;
-      return Offset(x, y);
-    });
-
-    // Number of points to draw based on animation progress
-    final drawCount = (progress * (points.length - 1)).clamp(0.0, points.length - 1.0);
-    final fullCount = drawCount.floor();
-    final partial = drawCount - fullCount;
-
-    // Build visible path
-    final path = Path();
-    path.moveTo(points[0].dx, points[0].dy);
-    for (var i = 1; i <= fullCount; i++) {
-      path.lineTo(points[i].dx, points[i].dy);
-    }
-    if (fullCount < points.length - 1 && partial > 0) {
-      final p1 = points[fullCount];
-      final p2 = points[fullCount + 1];
-      path.lineTo(
-        p1.dx + (p2.dx - p1.dx) * partial,
-        p1.dy + (p2.dy - p1.dy) * partial,
-      );
-    }
-
-    // Fill under line
-    final fillPath = Path.from(path)
-      ..lineTo(
-        fullCount < points.length - 1
-            ? points[fullCount].dx + (points[fullCount + 1].dx - points[fullCount].dx) * partial
-            : points.last.dx,
-        size.height,
-      )
-      ..lineTo(0, size.height)
-      ..close();
-
-    canvas.drawPath(
-      fillPath,
-      Paint()
-        ..color = fillColor
-        ..style = PaintingStyle.fill,
-    );
-
-    // Line
-    canvas.drawPath(
-      path,
-      Paint()
-        ..color = lineColor
-        ..style = PaintingStyle.stroke
-        ..strokeWidth = 2.5
-        ..strokeCap = StrokeCap.round
-        ..strokeJoin = StrokeJoin.round,
-    );
-
-    // Dots
-    final dotPaint = Paint()
-      ..color = dotColor
-      ..style = PaintingStyle.fill;
-    for (var i = 0; i <= fullCount; i++) {
-      canvas.drawCircle(points[i], 4, dotPaint);
-    }
-  }
-
-  @override
-  bool shouldRepaint(_SparklinePainter old) =>
-      old.progress != progress || old.data != data;
-}
-
-// ─── Confidence Meter ────────────────────────────────────────────────────────
-
-class _ConfidenceMeter extends StatelessWidget {
-  const _ConfidenceMeter({required this.confidence});
-  final double confidence;
+  const _AgentEventCard({required this.event});
 
   @override
   Widget build(BuildContext context) {
     return Container(
-      padding: const EdgeInsets.all(16),
+      margin: const EdgeInsets.only(bottom: 12),
+      padding: const EdgeInsets.all(14),
       decoration: BoxDecoration(
-        color: AppColors.inverseOnSurface,
-        borderRadius: BorderRadius.circular(12),
-        border: Border.all(
-          color: AppColors.riskMedium.withValues(alpha: 0.5),
-          width: 1.5,
-        ),
+        color: AppColors.surfaceContainerLowest,
+        borderRadius: BorderRadius.circular(14),
+        border: Border.all(color: AppColors.outlineVariant.withValues(alpha: 0.5)),
       ),
       child: Row(
+        crossAxisAlignment: CrossAxisAlignment.start,
         children: [
-          Icon(Icons.lightbulb, color: AppColors.secondary, size: 22),
+          Container(
+            padding: const EdgeInsets.all(8),
+            decoration: BoxDecoration(
+              color: AppColors.surfaceContainerHigh,
+              borderRadius: BorderRadius.circular(10),
+            ),
+            child: Text(event.step.icon, style: const TextStyle(fontSize: 20)),
+          ),
           const SizedBox(width: 12),
           Expanded(
             child: Column(
               crossAxisAlignment: CrossAxisAlignment.start,
               children: [
-                Text(
-                  'AI Confidence: ${(confidence * 100).round()}%',
-                  style: AppTextStyles.dataMono.copyWith(
-                    color: AppColors.secondary,
-                  ),
-                ),
-                const SizedBox(height: 6),
-                ClipRRect(
-                  borderRadius: BorderRadius.circular(4),
-                  child: LinearProgressIndicator(
-                    value: confidence,
-                    backgroundColor: AppColors.surfaceDim,
-                    valueColor: AlwaysStoppedAnimation<Color>(
-                      confidence > 0.75 ? AppColors.riskHigh : AppColors.riskMedium,
+                Row(
+                  mainAxisAlignment: MainAxisAlignment.spaceBetween,
+                  children: [
+                    Text(
+                      event.agentName,
+                      style: AppTextStyles.bodyMd.copyWith(fontWeight: FontWeight.bold, color: AppColors.onSurface),
                     ),
-                    minHeight: 8,
-                  ),
+                    if (event.isDone)
+                      const Icon(Icons.check_circle, size: 16, color: AppColors.primary),
+                  ],
+                ),
+                const SizedBox(height: 4),
+                Text(
+                  event.statusMessage,
+                  style: AppTextStyles.bodySm.copyWith(color: AppColors.onSurfaceVariant),
                 ),
               ],
             ),
@@ -560,43 +571,35 @@ class _ConfidenceMeter extends StatelessWidget {
   }
 }
 
-// ─── Teacher Override Card ───────────────────────────────────────────────────
-
 class _TeacherOverrideCard extends StatelessWidget {
+  final bool isOn;
+  final ValueChanged<bool> onToggle;
+  final TextEditingController controller;
+
   const _TeacherOverrideCard({
     required this.isOn,
     required this.onToggle,
     required this.controller,
   });
 
-  final bool isOn;
-  final ValueChanged<bool> onToggle;
-  final TextEditingController controller;
-
   @override
   Widget build(BuildContext context) {
     return Container(
       padding: const EdgeInsets.all(16),
       decoration: BoxDecoration(
-        color: AppColors.sandBg,
-        borderRadius: BorderRadius.circular(12),
-        border: Border.all(color: AppColors.surfaceDim),
+        color: AppColors.surfaceContainerLowest,
+        borderRadius: BorderRadius.circular(16),
+        border: Border.all(color: AppColors.outlineVariant.withValues(alpha: 0.5)),
       ),
       child: Column(
         crossAxisAlignment: CrossAxisAlignment.start,
         children: [
           Row(
+            mainAxisAlignment: MainAxisAlignment.spaceBetween,
             children: [
-              Icon(Icons.psychology, color: AppColors.secondary, size: 20),
-              const SizedBox(width: 8),
-              Expanded(
-                child: Text(
-                  "Ustaad's Gut-Check",
-                  style: AppTextStyles.headlineMd.copyWith(
-                    fontSize: 18,
-                    color: AppColors.inkText,
-                  ),
-                ),
+              Text(
+                'Teacher Override',
+                style: AppTextStyles.bodyLg.copyWith(fontWeight: FontWeight.bold, color: AppColors.onSurface),
               ),
               Switch(
                 value: isOn,
@@ -605,60 +608,14 @@ class _TeacherOverrideCard extends StatelessWidget {
               ),
             ],
           ),
-          const SizedBox(height: 8),
-          Text(
-            'Is the AI missing something? Add your observation to refine future recommendations.',
-            style: AppTextStyles.bodySm.copyWith(
-              color: AppColors.onSurfaceVariant,
-              fontStyle: FontStyle.italic,
-            ),
-          ),
           if (isOn) ...[
             const SizedBox(height: 12),
             TextField(
               controller: controller,
-              maxLines: 3,
-              decoration: InputDecoration(
-                hintText:
-                    'e.g., Amina mentioned her father was unwell last week...',
-                filled: true,
-                fillColor: AppColors.surfaceBright,
-                border: OutlineInputBorder(
-                  borderRadius: BorderRadius.circular(8),
-                  borderSide: BorderSide(
-                    color: AppColors.outlineVariant.withValues(alpha: 0.5),
-                  ),
-                ),
-                enabledBorder: OutlineInputBorder(
-                  borderRadius: BorderRadius.circular(8),
-                  borderSide: BorderSide(
-                    color: AppColors.outlineVariant.withValues(alpha: 0.5),
-                  ),
-                ),
-                focusedBorder: OutlineInputBorder(
-                  borderRadius: BorderRadius.circular(8),
-                  borderSide: const BorderSide(color: AppColors.primary),
-                ),
-              ),
-              style: AppTextStyles.bodyMd.copyWith(color: AppColors.inkText),
-            ),
-            const SizedBox(height: 12),
-            Align(
-              alignment: Alignment.centerRight,
-              child: ElevatedButton(
-                onPressed: () {},
-                style: ElevatedButton.styleFrom(
-                  backgroundColor: AppColors.surfaceContainerHigh,
-                  foregroundColor: AppColors.onSurface,
-                  elevation: 0,
-                  shape: const StadiumBorder(),
-                  padding: const EdgeInsets.symmetric(
-                    horizontal: 20,
-                    vertical: 10,
-                  ),
-                  textStyle: AppTextStyles.labelCaps,
-                ),
-                child: const Text('Save Note'),
+              maxLines: 2,
+              style: AppTextStyles.bodyMd.copyWith(color: AppColors.onSurface),
+              decoration: const InputDecoration(
+                hintText: 'Add teacher context or correction note...',
               ),
             ),
           ],
@@ -667,4 +624,3 @@ class _TeacherOverrideCard extends StatelessWidget {
     );
   }
 }
-

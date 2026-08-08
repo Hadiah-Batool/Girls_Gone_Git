@@ -46,11 +46,11 @@ class OpenRouterService {
   static const String _baseUrl =
       'https://openrouter.ai/api/v1/chat/completions';
 
-  // Default model – fast reasoning, good structured output
-  static const String defaultModel = 'google/gemini-2.5-flash';
+  // Default model – 100% free tier on OpenRouter (no paid credits required)
+  static const String defaultModel = 'google/gemini-2.5-flash:free';
 
-  // Fallback model if primary quota is exceeded
-  static const String fallbackModel = 'google/gemini-flash-1.5';
+  // Fallback models if primary free model is overloaded or out of quota
+  static const String fallbackModel = 'meta-llama/llama-3.3-70b-instruct:free';
 
   // HTTP timeout per request
   static const Duration _timeout = Duration(seconds: 60);
@@ -68,23 +68,13 @@ class OpenRouterService {
   }
 
   /// Sends a chat completion request to OpenRouter.
-  ///
-  /// [model] – OpenRouter model identifier, defaults to [defaultModel].
-  /// [messages] – ordered list of `{'role': ..., 'content': ...}` maps.
-  /// [temperature] – sampling temperature (0.0 = deterministic).
-  /// [maxTokens] – maximum response token budget.
-  ///
-  /// Returns the decoded JSON of the **first choice's message content**
-  /// as `Map<String, dynamic>`.
-  ///
-  /// Throws [OpenRouterException] on HTTP errors or JSON parse failures.
   Future<Map<String, dynamic>> chat({
     String model = defaultModel,
     required List<Map<String, dynamic>> messages,
     double temperature = 0.4,
     int maxTokens = 2048,
   }) async {
-    final apiKey = _apiKey; // may throw early
+    final apiKey = _apiKey;
 
     final requestBody = jsonEncode({
       'model': model,
@@ -102,7 +92,7 @@ class OpenRouterService {
             headers: {
               'Content-Type': 'application/json',
               'Authorization': 'Bearer $apiKey',
-              'HTTP-Referer': 'https://rehnumai.app', // OpenRouter attribution
+              'HTTP-Referer': 'https://rehnumai.app',
               'X-Title': 'Rehnumai Student Risk Analyzer',
             },
             body: requestBody,
@@ -110,8 +100,7 @@ class OpenRouterService {
           .timeout(
             _timeout,
             onTimeout: () => throw OpenRouterException(
-              message: 'Request timed out after ${_timeout.inSeconds}s '
-                  '(model: $model)',
+              message: 'Request timed out after ${_timeout.inSeconds}s (model: $model)',
             ),
           );
     } on OpenRouterException {
@@ -122,7 +111,6 @@ class OpenRouterService {
       );
     }
 
-    // ── HTTP error handling ───────────────────────────────────────────────
     if (response.statusCode != 200) {
       String? detail;
       try {
@@ -133,24 +121,22 @@ class OpenRouterService {
       }
       throw OpenRouterException(
         statusCode: response.statusCode,
-        message: detail ?? 'Unexpected HTTP ${response.statusCode} from OpenRouter',
+        message: detail ?? 'HTTP ${response.statusCode} from OpenRouter ($model)',
         rawBody: response.body.length < 1000 ? response.body : null,
       );
     }
 
-    // ── Parse outer OpenAI envelope ───────────────────────────────────────
     Map<String, dynamic> envelope;
     try {
       envelope = jsonDecode(response.body) as Map<String, dynamic>;
     } catch (e) {
       throw OpenRouterException(
         statusCode: response.statusCode,
-        message: 'Failed to decode OpenRouter response as JSON: $e',
+        message: 'Failed to decode response as JSON: $e',
         rawBody: response.body.length < 500 ? response.body : null,
       );
     }
 
-    // ── Extract content string from choices[0].message.content ────────────
     final choices = envelope['choices'] as List<dynamic>?;
     if (choices == null || choices.isEmpty) {
       throw OpenRouterException(
@@ -171,9 +157,6 @@ class OpenRouterService {
       );
     }
 
-    // ── Parse the inner JSON object returned by the model ─────────────────
-    // The model is instructed to return a JSON object via response_format.
-    // Strip any markdown code fences the model may accidentally include.
     final cleaned = _stripMarkdownFences(content.trim());
 
     try {
@@ -187,8 +170,8 @@ class OpenRouterService {
     }
   }
 
-  /// Attempts [chat] with [defaultModel]; on quota/rate-limit error (429)
-  /// automatically retries once with [fallbackModel].
+  /// Attempts [chat] with free defaultModel; on 402/429/503 errors automatically
+  /// retries once with fallback free model.
   Future<Map<String, dynamic>> chatWithFallback({
     required List<Map<String, dynamic>> messages,
     double temperature = 0.4,
@@ -202,14 +185,18 @@ class OpenRouterService {
         maxTokens: maxTokens,
       );
     } on OpenRouterException catch (e) {
-      if (e.statusCode == 429 || e.statusCode == 503) {
-        // Primary model overloaded – fall back
-        return await chat(
-          model: fallbackModel,
-          messages: messages,
-          temperature: temperature,
-          maxTokens: maxTokens,
-        );
+      if (e.statusCode == 402 || e.statusCode == 429 || e.statusCode == 503) {
+        // Fall back to secondary free model if primary free model is busy or requires credit
+        try {
+          return await chat(
+            model: fallbackModel,
+            messages: messages,
+            temperature: temperature,
+            maxTokens: maxTokens,
+          );
+        } catch (_) {
+          rethrow;
+        }
       }
       rethrow;
     }

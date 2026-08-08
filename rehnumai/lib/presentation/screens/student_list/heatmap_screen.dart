@@ -2,7 +2,11 @@ import 'dart:math' as math;
 import 'package:flutter/material.dart';
 import '../../../core/constants/app_colors.dart';
 import '../../../core/constants/app_theme.dart';
+import '../../../data/models/mock_students.dart';
+import '../../../data/models/student_model.dart';
 import '../../widgets/app_top_bar.dart';
+import '../scan_sheet/scan_sheet_screen.dart';
+import '../analysis/reasoning_trail_screen.dart';
 
 // ─── Data model ─────────────────────────────────────────────────────────────
 
@@ -116,8 +120,8 @@ class _HeatmapScreenState extends State<HeatmapScreen> {
       ),
       floatingActionButton: FloatingActionButton.extended(
         onPressed: () {
-          ScaffoldMessenger.of(context).showSnackBar(
-            const SnackBar(content: Text('Scanning Attendance Sheet...')),
+          Navigator.of(context).push(
+            MaterialPageRoute(builder: (_) => const ScanSheetScreen()),
           );
         },
         backgroundColor: AppColors.primary,
@@ -411,66 +415,115 @@ class _StudentCard extends StatelessWidget {
         RiskLevel.stable => AppColors.tertiaryFixed,
       };
 
+  Student _getStudentModel(StudentTile tile) {
+    if (tile.risk == RiskLevel.high) {
+      return mockStudents[0]; // Amina Khan (Financial Strain)
+    } else if (tile.risk == RiskLevel.medium) {
+      return mockStudents[1]; // Tariq Ahmed (Academic Struggle)
+    } else {
+      return mockStudents[2]; // Bilal Raza (Sick Week / False Positive)
+    }
+  }
+
   @override
   Widget build(BuildContext context) {
-    return Container(
-      padding: const EdgeInsets.symmetric(horizontal: 16, vertical: 12),
-      decoration: BoxDecoration(
-        color: AppColors.surfaceContainerLowest,
-        borderRadius: BorderRadius.circular(12),
-        border: Border.all(color: AppColors.outlineVariant.withValues(alpha: 0.5)),
-        boxShadow: [
-          BoxShadow(
-            color: Colors.black.withValues(alpha: 0.04),
-            blurRadius: 4,
-            offset: const Offset(0, 2),
-          ),
-        ],
-      ),
-      child: Row(
-        children: [
-          CircleAvatar(
-            radius: 20,
-            backgroundColor: _avatarBg,
-            child: Text(
-              student.initials,
-              style: AppTextStyles.dataMono.copyWith(color: AppColors.onPrimaryFixed),
+    final targetStudent = _getStudentModel(student);
+
+    return InkWell(
+      onTap: () {
+        Navigator.of(context).push(
+          MaterialPageRoute(
+            builder: (_) => ReasoningTrailScreen(
+              student: targetStudent,
+              autoRun: false,
             ),
           ),
-          const SizedBox(width: 16),
-          Expanded(
-            child: Column(
-              crossAxisAlignment: CrossAxisAlignment.start,
-              children: [
-                Text(
-                  student.name,
-                  style: AppTextStyles.bodyLg.copyWith(
-                    fontWeight: FontWeight.w700,
-                    color: AppColors.inkText,
+        );
+      },
+      borderRadius: BorderRadius.circular(12),
+      child: Container(
+        padding: const EdgeInsets.symmetric(horizontal: 16, vertical: 12),
+        decoration: BoxDecoration(
+          color: AppColors.surfaceContainerLowest,
+          borderRadius: BorderRadius.circular(12),
+          border: Border.all(color: AppColors.outlineVariant.withValues(alpha: 0.5)),
+          boxShadow: [
+            BoxShadow(
+              color: Colors.black.withValues(alpha: 0.04),
+              blurRadius: 4,
+              offset: const Offset(0, 2),
+            ),
+          ],
+        ),
+        child: Row(
+          children: [
+            CircleAvatar(
+              radius: 20,
+              backgroundColor: _avatarBg,
+              child: Text(
+                student.initials,
+                style: AppTextStyles.dataMono.copyWith(color: AppColors.onPrimaryFixed),
+              ),
+            ),
+            const SizedBox(width: 12),
+            Expanded(
+              child: Column(
+                crossAxisAlignment: CrossAxisAlignment.start,
+                children: [
+                  Text(
+                    student.name,
+                    style: AppTextStyles.bodyLg.copyWith(
+                      fontWeight: FontWeight.w700,
+                      color: AppColors.inkText,
+                    ),
                   ),
-                ),
-                Text(
-                  'Risk: ${student.risk.name}',
-                  style: AppTextStyles.bodySm.copyWith(
-                    color: AppColors.onSurfaceVariant,
+                  Text(
+                    'Risk: ${student.risk.name}',
+                    style: AppTextStyles.bodySm.copyWith(
+                      color: AppColors.onSurfaceVariant,
+                    ),
                   ),
-                ),
-              ],
+                ],
+              ),
             ),
-          ),
-          OutlinedButton.icon(
-            onPressed: onLog,
-            icon: const Icon(Icons.edit_note, size: 18),
-            label: const Text('Log'),
-            style: OutlinedButton.styleFrom(
-              foregroundColor: AppColors.inkText,
-              side: const BorderSide(color: AppColors.outline),
-              padding: const EdgeInsets.symmetric(horizontal: 12, vertical: 8),
-              textStyle: AppTextStyles.labelCaps,
-              shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(8)),
+            const SizedBox(width: 6),
+            ElevatedButton.icon(
+              onPressed: () {
+                Navigator.of(context).push(
+                  MaterialPageRoute(
+                    builder: (_) => ReasoningTrailScreen(
+                      student: targetStudent,
+                      autoRun: true,
+                    ),
+                  ),
+                );
+              },
+              icon: const Icon(Icons.auto_awesome, size: 14),
+              label: const Text('Analyze'),
+              style: ElevatedButton.styleFrom(
+                backgroundColor: AppColors.primary,
+                foregroundColor: AppColors.onPrimary,
+                padding: const EdgeInsets.symmetric(horizontal: 10, vertical: 6),
+                textStyle: AppTextStyles.labelCaps,
+                shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(8)),
+                elevation: 0,
+              ),
             ),
-          ),
-        ],
+            const SizedBox(width: 6),
+            OutlinedButton.icon(
+              onPressed: onLog,
+              icon: const Icon(Icons.edit_note, size: 16),
+              label: const Text('Log'),
+              style: OutlinedButton.styleFrom(
+                foregroundColor: AppColors.inkText,
+                side: const BorderSide(color: AppColors.outline),
+                padding: const EdgeInsets.symmetric(horizontal: 10, vertical: 6),
+                textStyle: AppTextStyles.labelCaps,
+                shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(8)),
+              ),
+            ),
+          ],
+        ),
       ),
     );
   }
@@ -492,12 +545,18 @@ class _LogStudentDialogState extends State<_LogStudentDialog> {
   Widget build(BuildContext context) {
     return AlertDialog(
       backgroundColor: AppColors.surfaceBright,
-      title: Text('Log Data: ${widget.student.name}'),
+      title: Text(
+        'Log Data: ${widget.student.name}',
+        style: AppTextStyles.headlineMd.copyWith(color: AppColors.onSurface),
+      ),
       content: Column(
         mainAxisSize: MainAxisSize.min,
         crossAxisAlignment: CrossAxisAlignment.start,
         children: [
-          const Text('Select categories to log:'),
+          Text(
+            'Select categories to log:',
+            style: AppTextStyles.bodyMd.copyWith(color: AppColors.onSurface),
+          ),
           const SizedBox(height: 12),
           Wrap(
             spacing: 8,
@@ -505,7 +564,15 @@ class _LogStudentDialogState extends State<_LogStudentDialog> {
             children: _tags.map((tag) {
               final isSelected = _selectedTags.contains(tag);
               return FilterChip(
-                label: Text(tag),
+                label: Text(
+                  tag,
+                  style: TextStyle(
+                    color: isSelected
+                        ? AppColors.onPrimaryContainer
+                        : AppColors.onSurface,
+                    fontWeight: FontWeight.w600,
+                  ),
+                ),
                 selected: isSelected,
                 onSelected: (selected) {
                   setState(() {
@@ -524,8 +591,10 @@ class _LogStudentDialogState extends State<_LogStudentDialog> {
           const SizedBox(height: 16),
           TextField(
             maxLines: 3,
+            style: const TextStyle(color: AppColors.onSurface, fontSize: 15),
             decoration: InputDecoration(
               hintText: 'Enter log details...',
+              hintStyle: const TextStyle(color: AppColors.onSurfaceVariant),
               filled: true,
               fillColor: AppColors.surfaceContainerLowest,
               border: OutlineInputBorder(
@@ -538,7 +607,7 @@ class _LogStudentDialogState extends State<_LogStudentDialog> {
               ),
               focusedBorder: OutlineInputBorder(
                 borderRadius: BorderRadius.circular(8),
-                borderSide: const BorderSide(color: AppColors.primary),
+                borderSide: const BorderSide(color: AppColors.primary, width: 2),
               ),
             ),
           )
@@ -547,6 +616,9 @@ class _LogStudentDialogState extends State<_LogStudentDialog> {
       actions: [
         TextButton(
           onPressed: () => Navigator.pop(context),
+          style: TextButton.styleFrom(
+            foregroundColor: AppColors.onSurfaceVariant,
+          ),
           child: const Text('Cancel'),
         ),
         ElevatedButton(

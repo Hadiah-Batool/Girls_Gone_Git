@@ -1,7 +1,10 @@
+// lib/core/constants/app_colors.dart
+//
+// All color tokens from the Rehnumai design system.
+// Values match the Tailwind config in the HTML prototypes exactly.
+
 import 'package:flutter/material.dart';
 
-/// All color tokens from the Rehnumai design system.
-/// Values match the Tailwind config in the HTML prototypes exactly.
 class AppColors {
   AppColors._();
 
@@ -73,4 +76,23 @@ class AppColors {
   static const Color riskHigh = Color(0xFFF26D5B);
   static const Color riskMedium = Color(0xFFF4D37B);
   static const Color riskStable = Color(0xFF84A98C);
+  static const Color riskCritical = Color(0xFFF26D5B);
+  static const Color riskLow = Color(0xFF84A98C);
+  static const Color riskMonitor = Color(0xFFB0C4DE);
+
+  // ── Agent step colors (backend pipeline) ──────────────────────────────────
+  static const Color agentPattern = Color(0xFFA8372A);
+  static const Color agentRootCause = Color(0xFFF26D5B);
+  static const Color agentCritique = Color(0xFFF4D37B);
+  static const Color agentIntervention = Color(0xFF84A98C);
+  static const Color agentComplete = Color(0xFF43664D);
+
+  // ── Convenience aliases (used by scan sheet + reasoning trail) ─────────────
+  static const Color scaffoldBg = surfaceBright;
+  static const Color textPrimary = onSurface;
+  static const Color textSecondary = onSurfaceVariant;
+  static const Color textLight = outline;
+  static const Color divider = outlineVariant;
+  static const Color accent = Color(0xFF735B0D);
+  static const Color success = Color(0xFF84A98C);
 }
