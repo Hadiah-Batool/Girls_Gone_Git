@@ -19,7 +19,7 @@ class AppTopBar extends StatelessWidget implements PreferredSizeWidget {
       scrolledUnderElevation: 0,
       leading: IconButton(
         icon: const Icon(Icons.menu, color: AppColors.primary),
-        onPressed: onMenuTap,
+        onPressed: onMenuTap ?? () => Scaffold.maybeOf(context)?.openDrawer(),
         tooltip: 'Menu',
       ),
       title: Text(
@@ -36,7 +36,31 @@ class AppTopBar extends StatelessWidget implements PreferredSizeWidget {
         Padding(
           padding: const EdgeInsets.only(right: 12),
           child: GestureDetector(
-            onTap: () {},
+            onTap: () {
+              showDialog(
+                context: context,
+                builder: (context) => AlertDialog(
+                  backgroundColor: AppColors.surfaceBright,
+                  title: Text(
+                    'Teacher Profile',
+                    style: GoogleFonts.manrope(
+                      fontWeight: FontWeight.bold,
+                      color: AppColors.primary,
+                    ),
+                  ),
+                  content: Text(
+                    'Profile details will be displayed here.',
+                    style: TextStyle(color: AppColors.onSurfaceVariant),
+                  ),
+                  actions: [
+                    TextButton(
+                      onPressed: () => Navigator.pop(context),
+                      child: const Text('Close'),
+                    ),
+                  ],
+                ),
+              );
+            },
             child: CircleAvatar(
               radius: 16,
               backgroundColor: AppColors.surfaceContainerHigh,
