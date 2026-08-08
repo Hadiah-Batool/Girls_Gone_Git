@@ -65,41 +65,8 @@ class HeatmapScreen extends StatefulWidget {
   State<HeatmapScreen> createState() => _HeatmapScreenState();
 }
 
-class _HeatmapScreenState extends State<HeatmapScreen>
-    with SingleTickerProviderStateMixin {
-  StudentTile? _selectedStudent;
-  late AnimationController _popoverController;
-  late Animation<double> _popoverAnimation;
-
-  @override
-  void initState() {
-    super.initState();
-    _popoverController = AnimationController(
-      duration: const Duration(milliseconds: 220),
-      vsync: this,
-    );
-    _popoverAnimation = CurvedAnimation(
-      parent: _popoverController,
-      curve: Curves.easeOutCubic,
-    );
-  }
-
-  @override
-  void dispose() {
-    _popoverController.dispose();
-    super.dispose();
-  }
-
-  void _selectStudent(StudentTile student) {
-    setState(() => _selectedStudent = student);
-    _popoverController.forward();
-  }
-
-  void _closePopover() {
-    _popoverController.reverse().then((_) {
-      if (mounted) setState(() => _selectedStudent = null);
-    });
-  }
+class _HeatmapScreenState extends State<HeatmapScreen> {
+  String _searchQuery = '';
 
   // Counts
   int get _highCount => _students.where((s) => s.risk == RiskLevel.high).length;
@@ -108,63 +75,109 @@ class _HeatmapScreenState extends State<HeatmapScreen>
   int get _stableCount =>
       _students.where((s) => s.risk == RiskLevel.stable).length;
 
+  List<StudentTile> get _filteredStudents {
+    if (_searchQuery.isEmpty) return _students;
+    return _students
+        .where((s) => s.name.toLowerCase().contains(_searchQuery.toLowerCase()))
+        .toList();
+  }
+
+  void _showLogDialog(StudentTile student) {
+    showDialog(
+      context: context,
+      builder: (context) => _LogStudentDialog(student: student),
+    );
+  }
+
   @override
   Widget build(BuildContext context) {
     return Scaffold(
       backgroundColor: AppColors.surfaceBright,
       appBar: const AppTopBar(),
-      body: Stack(
-        children: [
-          // ── Scrollable content
-          SingleChildScrollView(
-            padding: const EdgeInsets.fromLTRB(16, 8, 16, 120),
-            child: Column(
-              crossAxisAlignment: CrossAxisAlignment.start,
-              children: [
-                _ClassStatusCard(
-                  total: _students.length,
-                  highCount: _highCount,
-                  mediumCount: _mediumCount,
-                  stableCount: _stableCount,
-                ),
-                const SizedBox(height: 24),
-                _HeatmapSection(
-                  students: _students,
-                  selected: _selectedStudent,
-                  onTap: _selectStudent,
-                ),
-              ],
+      drawer: Drawer(
+        backgroundColor: AppColors.surfaceBright,
+        child: ListView(
+          padding: EdgeInsets.zero,
+          children: [
+            DrawerHeader(
+              decoration: const BoxDecoration(color: AppColors.primary),
+              child: Text(
+                'Rehnumai Menu',
+                style: AppTextStyles.headlineMd.copyWith(color: AppColors.onPrimary),
+              ),
             ),
-          ),
-
-          // ── Popover overlay
-          if (_selectedStudent != null)
-            GestureDetector(
-              onTap: _closePopover,
-              behavior: HitTestBehavior.translucent,
-              child: const SizedBox.expand(),
+            ListTile(
+              leading: const Icon(Icons.settings),
+              title: const Text('Settings'),
+              onTap: () => Navigator.pop(context),
             ),
-          AnimatedBuilder(
-            animation: _popoverAnimation,
-            builder: (context, child) {
-              return Positioned(
-                left: 16,
-                right: 16,
-                bottom: 96 + (_popoverAnimation.value - 1) * 40,
-                child: Opacity(
-                  opacity: _popoverAnimation.value,
-                  child: child,
+          ],
+        ),
+      ),
+      floatingActionButton: FloatingActionButton.extended(
+        onPressed: () {
+          ScaffoldMessenger.of(context).showSnackBar(
+            const SnackBar(content: Text('Scanning Attendance Sheet...')),
+          );
+        },
+        backgroundColor: AppColors.primary,
+        foregroundColor: AppColors.onPrimary,
+        icon: const Icon(Icons.document_scanner),
+        label: const Text('Scan Sheet'),
+      ),
+      body: SingleChildScrollView(
+        padding: const EdgeInsets.fromLTRB(16, 8, 16, 120),
+        child: Column(
+          crossAxisAlignment: CrossAxisAlignment.start,
+          children: [
+            _ClassStatusCard(
+              total: _students.length,
+              highCount: _highCount,
+              mediumCount: _mediumCount,
+              stableCount: _stableCount,
+            ),
+            const SizedBox(height: 24),
+            TextField(
+              decoration: InputDecoration(
+                hintText: 'Search student...',
+                prefixIcon: const Icon(Icons.search, color: AppColors.onSurfaceVariant),
+                filled: true,
+                fillColor: AppColors.surfaceContainerLowest,
+                contentPadding: const EdgeInsets.symmetric(vertical: 0),
+                enabledBorder: OutlineInputBorder(
+                  borderRadius: BorderRadius.circular(12),
+                  borderSide: const BorderSide(color: AppColors.outlineVariant),
+                ),
+                focusedBorder: OutlineInputBorder(
+                  borderRadius: BorderRadius.circular(12),
+                  borderSide: const BorderSide(color: AppColors.primary),
+                ),
+              ),
+              onChanged: (val) {
+                setState(() {
+                  _searchQuery = val;
+                });
+              },
+            ),
+            const SizedBox(height: 16),
+            Text(
+              "Ustaad's Eye",
+              style: AppTextStyles.headlineMd.copyWith(
+                color: AppColors.inkText,
+              ),
+            ),
+            const SizedBox(height: 12),
+            ..._filteredStudents.map((student) {
+              return Padding(
+                padding: const EdgeInsets.only(bottom: 8.0),
+                child: _StudentCard(
+                  student: student,
+                  onLog: () => _showLogDialog(student),
                 ),
               );
-            },
-            child: _selectedStudent != null
-                ? _StudentPopover(
-                    student: _selectedStudent!,
-                    onClose: _closePopover,
-                  )
-                : const SizedBox.shrink(),
-          ),
-        ],
+            }),
+          ],
+        ),
       ),
     );
   }
@@ -385,181 +398,12 @@ class _DonutPainter extends CustomPainter {
       old.stable != stable || old.medium != medium || old.high != high;
 }
 
-// ─── Heatmap Section ─────────────────────────────────────────────────────────
+// ─── Student Components ───────────────────────────────────────────────────────
 
-class _HeatmapSection extends StatelessWidget {
-  const _HeatmapSection({
-    required this.students,
-    required this.selected,
-    required this.onTap,
-  });
-
-  final List<StudentTile> students;
-  final StudentTile? selected;
-  final ValueChanged<StudentTile> onTap;
-
-  static const int _columns = 7;
-
-  @override
-  Widget build(BuildContext context) {
-    // Split into rows of 7
-    final rows = <List<StudentTile>>[];
-    for (var i = 0; i < students.length; i += _columns) {
-      rows.add(
-        students.sublist(i, math.min(i + _columns, students.length)),
-      );
-    }
-
-    return Column(
-      crossAxisAlignment: CrossAxisAlignment.start,
-      children: [
-        Row(
-          mainAxisAlignment: MainAxisAlignment.spaceBetween,
-          crossAxisAlignment: CrossAxisAlignment.end,
-          children: [
-            Text(
-              "Ustaad's Eye",
-              style: AppTextStyles.headlineMd.copyWith(
-                color: AppColors.inkText,
-              ),
-            ),
-            Row(
-              children: [
-                const Icon(
-                  Icons.filter_list,
-                  size: 16,
-                  color: AppColors.onSurfaceVariant,
-                ),
-                const SizedBox(width: 4),
-                Text(
-                  'Filter',
-                  style: AppTextStyles.labelCaps.copyWith(
-                    color: AppColors.onSurfaceVariant,
-                  ),
-                ),
-              ],
-            ),
-          ],
-        ),
-        const SizedBox(height: 12),
-        SingleChildScrollView(
-          scrollDirection: Axis.horizontal,
-          child: Column(
-            crossAxisAlignment: CrossAxisAlignment.start,
-            children: rows.map((row) {
-              return Padding(
-                padding: const EdgeInsets.only(bottom: 8),
-                child: Row(
-                  children: row.map((student) {
-                    return Padding(
-                      padding: const EdgeInsets.only(right: 8),
-                      child: _HeatmapCell(
-                        student: student,
-                        isSelected: selected == student,
-                        onTap: () => onTap(student),
-                      ),
-                    );
-                  }).toList(),
-                ),
-              );
-            }).toList(),
-          ),
-        ),
-      ],
-    );
-  }
-}
-
-class _HeatmapCell extends StatelessWidget {
-  const _HeatmapCell({
-    required this.student,
-    required this.isSelected,
-    required this.onTap,
-  });
-
+class _StudentCard extends StatelessWidget {
   final StudentTile student;
-  final bool isSelected;
-  final VoidCallback onTap;
-
-  Color get _bgColor {
-    switch (student.risk) {
-      case RiskLevel.high:
-        return AppColors.riskHigh;
-      case RiskLevel.medium:
-        return AppColors.riskMedium;
-      case RiskLevel.stable:
-        return AppColors.riskStable;
-    }
-  }
-
-  Color get _textColor {
-    switch (student.risk) {
-      case RiskLevel.high:
-        return AppColors.onErrorContainer;
-      case RiskLevel.medium:
-        return AppColors.onSecondaryFixedVariant;
-      case RiskLevel.stable:
-        return AppColors.onTertiaryFixedVariant;
-    }
-  }
-
-  @override
-  Widget build(BuildContext context) {
-    return Column(
-      mainAxisSize: MainAxisSize.min,
-      children: [
-        AnimatedContainer(
-          duration: const Duration(milliseconds: 200),
-          width: 44,
-          height: 44,
-          decoration: BoxDecoration(
-            color: _bgColor,
-            borderRadius: BorderRadius.circular(4),
-            border: Border.all(
-              color: isSelected ? AppColors.primary : Colors.transparent,
-              width: isSelected ? 2 : 1,
-            ),
-            boxShadow: [
-              BoxShadow(
-                color: Colors.black.withValues(alpha: 0.08),
-                blurRadius: 4,
-                offset: const Offset(0, 2),
-              ),
-            ],
-          ),
-          child: Material(
-            color: Colors.transparent,
-            child: InkWell(
-              onTap: onTap,
-              borderRadius: BorderRadius.circular(4),
-              child: Center(
-                child: Text(
-                  student.initials,
-                  style: AppTextStyles.dataMono.copyWith(color: _textColor),
-                ),
-              ),
-            ),
-          ),
-        ),
-        const SizedBox(height: 4),
-        Text(
-          student.name,
-          style: AppTextStyles.labelCaps.copyWith(
-            color: AppColors.onSurfaceVariant,
-          ),
-        ),
-      ],
-    );
-  }
-}
-
-// ─── Student Popover ─────────────────────────────────────────────────────────
-
-class _StudentPopover extends StatelessWidget {
-  const _StudentPopover({required this.student, required this.onClose});
-
-  final StudentTile student;
-  final VoidCallback onClose;
+  final VoidCallback onLog;
+  const _StudentCard({required this.student, required this.onLog});
 
   Color get _avatarBg => switch (student.risk) {
         RiskLevel.high => AppColors.primaryFixedDim,
@@ -569,112 +413,156 @@ class _StudentPopover extends StatelessWidget {
 
   @override
   Widget build(BuildContext context) {
-    return Material(
-      color: Colors.transparent,
-      child: Container(
-        padding: const EdgeInsets.all(20),
-        decoration: BoxDecoration(
-          color: AppColors.surfaceContainerHighest,
-          borderRadius: BorderRadius.circular(16),
-          border: Border.all(color: AppColors.outlineVariant),
-          boxShadow: [
-            BoxShadow(
-              color: Colors.black.withValues(alpha: 0.12),
-              blurRadius: 24,
-              offset: const Offset(0, 8),
+    return Container(
+      padding: const EdgeInsets.symmetric(horizontal: 16, vertical: 12),
+      decoration: BoxDecoration(
+        color: AppColors.surfaceContainerLowest,
+        borderRadius: BorderRadius.circular(12),
+        border: Border.all(color: AppColors.outlineVariant.withValues(alpha: 0.5)),
+        boxShadow: [
+          BoxShadow(
+            color: Colors.black.withValues(alpha: 0.04),
+            blurRadius: 4,
+            offset: const Offset(0, 2),
+          ),
+        ],
+      ),
+      child: Row(
+        children: [
+          CircleAvatar(
+            radius: 20,
+            backgroundColor: _avatarBg,
+            child: Text(
+              student.initials,
+              style: AppTextStyles.dataMono.copyWith(color: AppColors.onPrimaryFixed),
             ),
-          ],
-        ),
-        child: Column(
-          mainAxisSize: MainAxisSize.min,
-          children: [
-            // Header row
-            Row(
+          ),
+          const SizedBox(width: 16),
+          Expanded(
+            child: Column(
+              crossAxisAlignment: CrossAxisAlignment.start,
               children: [
-                CircleAvatar(
-                  radius: 20,
-                  backgroundColor: _avatarBg,
-                  child: Text(
-                    student.initials,
-                    style: AppTextStyles.dataMono.copyWith(
-                      color: AppColors.onPrimaryFixed,
-                    ),
+                Text(
+                  student.name,
+                  style: AppTextStyles.bodyLg.copyWith(
+                    fontWeight: FontWeight.w700,
+                    color: AppColors.inkText,
                   ),
                 ),
-                const SizedBox(width: 12),
-                Expanded(
-                  child: Column(
-                    crossAxisAlignment: CrossAxisAlignment.start,
-                    children: [
-                      Text(
-                        student.name,
-                        style: AppTextStyles.bodyLg.copyWith(
-                          fontWeight: FontWeight.w700,
-                          color: AppColors.inkText,
-                        ),
-                      ),
-                      Text(
-                        'Last logged: ${student.lastLogged}',
-                        style: AppTextStyles.bodySm.copyWith(
-                          color: AppColors.onSurfaceVariant,
-                        ),
-                      ),
-                    ],
-                  ),
-                ),
-                IconButton(
-                  icon: const Icon(
-                    Icons.close,
+                Text(
+                  'Risk: ${student.risk.name}',
+                  style: AppTextStyles.bodySm.copyWith(
                     color: AppColors.onSurfaceVariant,
                   ),
-                  onPressed: onClose,
                 ),
               ],
             ),
-            const SizedBox(height: 16),
-            // Action buttons
-            Row(
-              children: [
-                Expanded(
-                  child: OutlinedButton.icon(
-                    onPressed: () {},
-                    icon: const Icon(Icons.edit_note, size: 18),
-                    label: const Text('Log'),
-                    style: OutlinedButton.styleFrom(
-                      foregroundColor: AppColors.inkText,
-                      side: const BorderSide(color: AppColors.outline),
-                      padding: const EdgeInsets.symmetric(vertical: 10),
-                      textStyle: AppTextStyles.labelCaps,
-                      shape: RoundedRectangleBorder(
-                        borderRadius: BorderRadius.circular(8),
-                      ),
-                    ),
-                  ),
-                ),
-                const SizedBox(width: 8),
-                Expanded(
-                  child: ElevatedButton.icon(
-                    onPressed: () {},
-                    icon: const Icon(Icons.analytics, size: 18),
-                    label: const Text('Analyze'),
-                    style: ElevatedButton.styleFrom(
-                      backgroundColor: AppColors.primary,
-                      foregroundColor: AppColors.onPrimary,
-                      elevation: 0,
-                      padding: const EdgeInsets.symmetric(vertical: 10),
-                      textStyle: AppTextStyles.labelCaps,
-                      shape: RoundedRectangleBorder(
-                        borderRadius: BorderRadius.circular(8),
-                      ),
-                    ),
-                  ),
-                ),
-              ],
+          ),
+          OutlinedButton.icon(
+            onPressed: onLog,
+            icon: const Icon(Icons.edit_note, size: 18),
+            label: const Text('Log'),
+            style: OutlinedButton.styleFrom(
+              foregroundColor: AppColors.inkText,
+              side: const BorderSide(color: AppColors.outline),
+              padding: const EdgeInsets.symmetric(horizontal: 12, vertical: 8),
+              textStyle: AppTextStyles.labelCaps,
+              shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(8)),
             ),
-          ],
-        ),
+          ),
+        ],
       ),
     );
   }
 }
 
+class _LogStudentDialog extends StatefulWidget {
+  final StudentTile student;
+  const _LogStudentDialog({required this.student});
+
+  @override
+  State<_LogStudentDialog> createState() => _LogStudentDialogState();
+}
+
+class _LogStudentDialogState extends State<_LogStudentDialog> {
+  final Set<String> _selectedTags = {};
+  final List<String> _tags = ['Attendance', 'Academics', 'Behaviors'];
+
+  @override
+  Widget build(BuildContext context) {
+    return AlertDialog(
+      backgroundColor: AppColors.surfaceBright,
+      title: Text('Log Data: ${widget.student.name}'),
+      content: Column(
+        mainAxisSize: MainAxisSize.min,
+        crossAxisAlignment: CrossAxisAlignment.start,
+        children: [
+          const Text('Select categories to log:'),
+          const SizedBox(height: 12),
+          Wrap(
+            spacing: 8,
+            runSpacing: 8,
+            children: _tags.map((tag) {
+              final isSelected = _selectedTags.contains(tag);
+              return FilterChip(
+                label: Text(tag),
+                selected: isSelected,
+                onSelected: (selected) {
+                  setState(() {
+                    if (selected) {
+                      _selectedTags.add(tag);
+                    } else {
+                      _selectedTags.remove(tag);
+                    }
+                  });
+                },
+                selectedColor: AppColors.primaryContainer,
+                checkmarkColor: AppColors.onPrimaryContainer,
+              );
+            }).toList(),
+          ),
+          const SizedBox(height: 16),
+          TextField(
+            maxLines: 3,
+            decoration: InputDecoration(
+              hintText: 'Enter log details...',
+              filled: true,
+              fillColor: AppColors.surfaceContainerLowest,
+              border: OutlineInputBorder(
+                borderRadius: BorderRadius.circular(8),
+                borderSide: const BorderSide(color: AppColors.outlineVariant),
+              ),
+              enabledBorder: OutlineInputBorder(
+                borderRadius: BorderRadius.circular(8),
+                borderSide: const BorderSide(color: AppColors.outlineVariant),
+              ),
+              focusedBorder: OutlineInputBorder(
+                borderRadius: BorderRadius.circular(8),
+                borderSide: const BorderSide(color: AppColors.primary),
+              ),
+            ),
+          )
+        ],
+      ),
+      actions: [
+        TextButton(
+          onPressed: () => Navigator.pop(context),
+          child: const Text('Cancel'),
+        ),
+        ElevatedButton(
+          onPressed: () {
+            Navigator.pop(context);
+            ScaffoldMessenger.of(context).showSnackBar(
+              SnackBar(content: Text('Logged for ${widget.student.name}')),
+            );
+          },
+          style: ElevatedButton.styleFrom(
+            backgroundColor: AppColors.primary,
+            foregroundColor: AppColors.onPrimary,
+          ),
+          child: const Text('Save Log'),
+        ),
+      ],
+    );
+  }
+}
