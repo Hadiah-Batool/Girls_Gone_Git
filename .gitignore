@@ -1,0 +1,87 @@
+# Environment variables, secrets & API keys
+.env
+.env.*
+*.env
+*.pem
+*.key
+*.p12
+*.pfx
+*.keystore
+*.jks
+google-services.json
+GoogleService-Info.plist
+secrets.json
+
+# Large Application Binaries & Build Outputs
+*.apk
+*.aab
+*.ap_
+*.ipa
+*.app
+*.dmg
+*.exe
+*.dll
+*.so
+*.dylib
+*.iso
+*.bin
+*.zip
+*.tar.gz
+*.rar
+*.7z
+*.aar
+*.jar
+
+# Build & Cache Directories
+build/
+**/build/
+dist/
+out/
+bin/
+obj/
+.dart_tool/
+**/.dart_tool/
+.flutter-plugins
+.flutter-plugins-dependencies
+.pub-cache/
+.pub/
+coverage/
+
+# Android / iOS Ephemeral & Build Files
+**/android/app/debug/
+**/android/app/profile/
+**/android/app/release/
+**/ios/Flutter/App.framework
+**/ios/Flutter/Flutter.framework
+**/ios/Flutter/Flutter.podspec
+**/ios/Runner/GeneratedPluginRegistrant.*
+**/linux/flutter/ephemeral/
+**/macos/flutter/ephemeral/
+**/windows/flutter/ephemeral/
+
+# IDE & Editor Configurations
+.idea/
+**/.idea/
+*.iml
+**/*.iml
+*.ipr
+*.iws
+.vscode/
+
+# OS & System Files
+.DS_Store
+.DS_Store?
+._*
+.Spotlight-V100
+.Trashes
+ehthumbs.db
+Thumbs.db
+Desktop.ini
+
+# Logs & Temporary Files
+*.log
+*.tmp
+*.temp
+npm-debug.log*
+yarn-debug.log*
+yarn-error.log*
