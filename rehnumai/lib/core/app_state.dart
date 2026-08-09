@@ -1,5 +1,7 @@
 import 'package:flutter/material.dart';
 import 'package:shared_preferences/shared_preferences.dart';
+import '../data/models/student_model.dart';
+import '../data/repositories/student_repository.dart';
 
 class AppState extends ChangeNotifier {
   late SharedPreferences _prefs;
@@ -10,6 +12,8 @@ class AppState extends ChangeNotifier {
   String _teacherAge = '';
   String _teacherEducation = '';
   String _teacherOccupation = '';
+
+  List<Student> get students => StudentRepository.instance.students;
 
   bool get isInitialized => _isInitialized;
   bool get isDarkMode => _isDarkMode;
@@ -27,6 +31,26 @@ class AppState extends ChangeNotifier {
     _teacherEducation = _prefs.getString('teacherEducation') ?? '';
     _teacherOccupation = _prefs.getString('teacherOccupation') ?? '';
     _isInitialized = true;
+    notifyListeners();
+  }
+
+  void clearAllDummyData() {
+    StudentRepository.instance.clearAll();
+    notifyListeners();
+  }
+
+  void resetDummyData() {
+    StudentRepository.instance.resetToMock();
+    notifyListeners();
+  }
+
+  void addStudent(Student student) {
+    StudentRepository.instance.addStudent(student);
+    notifyListeners();
+  }
+
+  void importStudents(List<Student> imported) {
+    StudentRepository.instance.importFromOcr(imported);
     notifyListeners();
   }
 

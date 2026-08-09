@@ -4,7 +4,10 @@
 // Provides navigation to Scan Sheet and lists past analyses.
 
 import 'package:flutter/material.dart';
+import 'package:provider/provider.dart';
+import '../../../core/app_state.dart';
 import '../../../core/constants/app_colors.dart';
+import '../daily_log/quick_log_screen.dart';
 import '../scan_sheet/scan_sheet_screen.dart';
 
 class HomeScreen extends StatelessWidget {
@@ -12,6 +15,8 @@ class HomeScreen extends StatelessWidget {
 
   @override
   Widget build(BuildContext context) {
+    final appState = Provider.of<AppState>(context);
+
     return Scaffold(
       backgroundColor: AppColors.scaffoldBg,
       body: SafeArea(
@@ -41,24 +46,64 @@ class HomeScreen extends StatelessWidget {
                       ),
                     ),
                     const SizedBox(width: 14),
-                    const Column(
-                      crossAxisAlignment: CrossAxisAlignment.start,
-                      children: [
-                        Text(
-                          'Rehnumai',
-                          style: TextStyle(
-                            fontSize: 22,
-                            fontWeight: FontWeight.w700,
-                            color: AppColors.textPrimary,
-                            letterSpacing: -0.3,
+                    const Expanded(
+                      child: Column(
+                        crossAxisAlignment: CrossAxisAlignment.start,
+                        children: [
+                          Text(
+                            'Rehnumai',
+                            style: TextStyle(
+                              fontSize: 22,
+                              fontWeight: FontWeight.w700,
+                              color: AppColors.textPrimary,
+                              letterSpacing: -0.3,
+                            ),
+                          ),
+                          Text(
+                            'Student Risk Analyzer',
+                            style: TextStyle(
+                              fontSize: 13,
+                              fontWeight: FontWeight.w500,
+                              color: AppColors.textSecondary,
+                            ),
+                          ),
+                        ],
+                      ),
+                    ),
+                    PopupMenuButton<String>(
+                      icon: const Icon(Icons.more_vert_rounded, color: AppColors.textSecondary),
+                      onSelected: (val) {
+                        if (val == 'clear') {
+                          appState.clearAllDummyData();
+                          ScaffoldMessenger.of(context).showSnackBar(
+                            const SnackBar(content: Text('All dummy data cleared!')),
+                          );
+                        } else if (val == 'reset') {
+                          appState.resetDummyData();
+                          ScaffoldMessenger.of(context).showSnackBar(
+                            const SnackBar(content: Text('Dataset reset to sample students!')),
+                          );
+                        }
+                      },
+                      itemBuilder: (ctx) => [
+                        const PopupMenuItem(
+                          value: 'clear',
+                          child: Row(
+                            children: [
+                              Icon(Icons.delete_outline_rounded, color: Colors.red, size: 20),
+                              SizedBox(width: 10),
+                              Text('Clear All Dummy Data'),
+                            ],
                           ),
                         ),
-                        Text(
-                          'Student Risk Analyzer',
-                          style: TextStyle(
-                            fontSize: 13,
-                            fontWeight: FontWeight.w500,
-                            color: AppColors.textSecondary,
+                        const PopupMenuItem(
+                          value: 'reset',
+                          child: Row(
+                            children: [
+                              Icon(Icons.restore_rounded, color: AppColors.primary, size: 20),
+                              SizedBox(width: 10),
+                              Text('Reset Sample Data'),
+                            ],
                           ),
                         ),
                       ],
@@ -68,18 +113,78 @@ class HomeScreen extends StatelessWidget {
               ),
             ),
 
-            // ── Scan Card ───────────────────────────────────────────────
+            // ── Action Cards Row ───────────────────────────────────────────
             SliverToBoxAdapter(
               child: Padding(
-                padding: const EdgeInsets.fromLTRB(20, 24, 20, 12),
-                child: _ScanCard(
-                  onTap: () {
-                    Navigator.of(context).push(
-                      MaterialPageRoute(
-                        builder: (_) => const ScanSheetScreen(),
+                padding: const EdgeInsets.fromLTRB(20, 20, 20, 12),
+                child: Column(
+                  children: [
+                    _ScanCard(
+                      onTap: () {
+                        Navigator.of(context).push(
+                          MaterialPageRoute(
+                            builder: (_) => const ScanSheetScreen(),
+                          ),
+                        );
+                      },
+                    ),
+                    const SizedBox(height: 12),
+                    InkWell(
+                      onTap: () {
+                        Navigator.of(context).push(
+                          MaterialPageRoute(
+                            builder: (_) => const QuickLogScreen(),
+                          ),
+                        );
+                      },
+                      borderRadius: BorderRadius.circular(16),
+                      child: Container(
+                        padding: const EdgeInsets.all(16),
+                        decoration: BoxDecoration(
+                          color: Colors.white,
+                          borderRadius: BorderRadius.circular(16),
+                          border: Border.all(color: AppColors.divider),
+                        ),
+                        child: Row(
+                          children: [
+                            Container(
+                              padding: const EdgeInsets.all(12),
+                              decoration: BoxDecoration(
+                                color: AppColors.accent.withValues(alpha: 0.1),
+                                borderRadius: BorderRadius.circular(12),
+                              ),
+                              child: const Icon(Icons.edit_note_rounded, color: AppColors.accent, size: 24),
+                            ),
+                            const SizedBox(width: 14),
+                            const Expanded(
+                              child: Column(
+                                crossAxisAlignment: CrossAxisAlignment.start,
+                                children: [
+                                  Text(
+                                    'Quick Daily Logs',
+                                    style: TextStyle(
+                                      fontSize: 16,
+                                      fontWeight: FontWeight.w600,
+                                      color: AppColors.textPrimary,
+                                    ),
+                                  ),
+                                  SizedBox(height: 2),
+                                  Text(
+                                    'Log attendance drops, marks, or notes',
+                                    style: TextStyle(
+                                      fontSize: 12,
+                                      color: AppColors.textSecondary,
+                                    ),
+                                  ),
+                                ],
+                              ),
+                            ),
+                            const Icon(Icons.arrow_forward_ios_rounded, size: 16, color: AppColors.textLight),
+                          ],
+                        ),
                       ),
-                    );
-                  },
+                    ),
+                  ],
                 ),
               ),
             ),

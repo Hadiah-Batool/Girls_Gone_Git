@@ -201,6 +201,240 @@ You are a data extraction specialist. Extract structured student data from raw O
     );
   }
 
+  void _showPerformanceCharts(BuildContext context, Student student) {
+    showModalBottomSheet(
+      context: context,
+      isScrollControlled: true,
+      backgroundColor: Colors.transparent,
+      builder: (ctx) => DraggableScrollableSheet(
+        initialChildSize: 0.8,
+        minChildSize: 0.5,
+        maxChildSize: 0.95,
+        builder: (_, scrollController) => Container(
+          decoration: const BoxDecoration(
+            color: Colors.white,
+            borderRadius: BorderRadius.vertical(top: Radius.circular(24)),
+          ),
+          padding: const EdgeInsets.all(20),
+          child: ListView(
+            controller: scrollController,
+            children: [
+              Center(
+                child: Container(
+                  width: 40,
+                  height: 4,
+                  margin: const EdgeInsets.only(bottom: 16),
+                  decoration: BoxDecoration(
+                    color: AppColors.divider,
+                    borderRadius: BorderRadius.circular(2),
+                  ),
+                ),
+              ),
+              Row(
+                children: [
+                  const Icon(Icons.bar_chart_rounded, color: AppColors.primary, size: 28),
+                  const SizedBox(width: 10),
+                  Expanded(
+                    child: Column(
+                      crossAxisAlignment: CrossAxisAlignment.start,
+                      children: [
+                        Text(
+                          '${student.name}\'s Analytics',
+                          style: AppTextStyles.headlineMd,
+                        ),
+                        Text(
+                          'Academic Scores & Attendance Trends',
+                          style: AppTextStyles.bodySm.copyWith(color: AppColors.onSurfaceVariant),
+                        ),
+                      ],
+                    ),
+                  ),
+                  IconButton(
+                    icon: const Icon(Icons.close_rounded),
+                    onPressed: () => Navigator.of(ctx).pop(),
+                  ),
+                ],
+              ),
+              const SizedBox(height: 20),
+
+              // Attendance Overview Card
+              Container(
+                padding: const EdgeInsets.all(16),
+                decoration: BoxDecoration(
+                  color: AppColors.surfaceContainerLowest,
+                  borderRadius: BorderRadius.circular(16),
+                  border: Border.all(color: AppColors.divider),
+                ),
+                child: Column(
+                  crossAxisAlignment: CrossAxisAlignment.start,
+                  children: [
+                    Row(
+                      mainAxisAlignment: MainAxisAlignment.spaceBetween,
+                      children: [
+                        const Text(
+                          'Attendance Rate',
+                          style: TextStyle(fontWeight: FontWeight.bold, fontSize: 15),
+                        ),
+                        Text(
+                          '${student.attendanceRate.toStringAsFixed(1)}%',
+                          style: TextStyle(
+                            fontWeight: FontWeight.bold,
+                            fontSize: 16,
+                            color: student.attendanceRate >= 80
+                                ? AppColors.success
+                                : student.attendanceRate >= 60
+                                    ? AppColors.riskMedium
+                                    : AppColors.riskHigh,
+                          ),
+                        ),
+                      ],
+                    ),
+                    const SizedBox(height: 10),
+                    ClipRRect(
+                      borderRadius: BorderRadius.circular(6),
+                      child: LinearProgressIndicator(
+                        value: (student.attendanceRate / 100).clamp(0.0, 1.0),
+                        minHeight: 10,
+                        backgroundColor: AppColors.divider,
+                        color: student.attendanceRate >= 80
+                            ? AppColors.success
+                            : student.attendanceRate >= 60
+                                ? AppColors.riskMedium
+                                : AppColors.riskHigh,
+                      ),
+                    ),
+                    const SizedBox(height: 8),
+                    Text(
+                      'Total Logs: ${student.attendance.length} days | Present: ${student.attendance.where((a) => a.isPresent).length} days',
+                      style: AppTextStyles.bodySm.copyWith(color: AppColors.onSurfaceVariant),
+                    ),
+                  ],
+                ),
+              ),
+              const SizedBox(height: 16),
+
+              // Exam Performance Graph Card
+              Container(
+                padding: const EdgeInsets.all(16),
+                decoration: BoxDecoration(
+                  color: AppColors.surfaceContainerLowest,
+                  borderRadius: BorderRadius.circular(16),
+                  border: Border.all(color: AppColors.divider),
+                ),
+                child: Column(
+                  crossAxisAlignment: CrossAxisAlignment.start,
+                  children: [
+                    const Text(
+                      'Academic Score Progression',
+                      style: TextStyle(fontWeight: FontWeight.bold, fontSize: 15),
+                    ),
+                    const SizedBox(height: 14),
+                    if (student.examScores.isEmpty)
+                      const Text('No exam scores recorded yet.')
+                    else
+                      ...student.examScores.entries.map((entry) {
+                        final dateStr = entry.key.toIso8601String().split('T').first;
+                        final score = entry.value;
+                        return Padding(
+                          padding: const EdgeInsets.only(bottom: 12),
+                          child: Column(
+                            crossAxisAlignment: CrossAxisAlignment.start,
+                            children: [
+                              Row(
+                                mainAxisAlignment: MainAxisAlignment.spaceBetween,
+                                children: [
+                                  Text(dateStr, style: AppTextStyles.bodySm),
+                                  Text(
+                                    '${score.toStringAsFixed(1)}%',
+                                    style: TextStyle(
+                                      fontWeight: FontWeight.bold,
+                                      color: score >= 75
+                                          ? AppColors.success
+                                          : score >= 50
+                                              ? AppColors.riskMedium
+                                              : AppColors.riskHigh,
+                                    ),
+                                  ),
+                                ],
+                              ),
+                              const SizedBox(height: 4),
+                              ClipRRect(
+                                borderRadius: BorderRadius.circular(4),
+                                child: LinearProgressIndicator(
+                                  value: (score / 100).clamp(0.0, 1.0),
+                                  minHeight: 8,
+                                  backgroundColor: AppColors.divider,
+                                  color: score >= 75
+                                      ? AppColors.success
+                                      : score >= 50
+                                          ? AppColors.riskMedium
+                                          : AppColors.riskHigh,
+                                ),
+                              ),
+                            ],
+                          ),
+                        );
+                      }),
+                  ],
+                ),
+              ),
+              const SizedBox(height: 16),
+
+              // Risk Signals Breakdown
+              Container(
+                padding: const EdgeInsets.all(16),
+                decoration: BoxDecoration(
+                  color: AppColors.surfaceContainerLowest,
+                  borderRadius: BorderRadius.circular(16),
+                  border: Border.all(color: AppColors.divider),
+                ),
+                child: Column(
+                  crossAxisAlignment: CrossAxisAlignment.start,
+                  children: [
+                    const Text(
+                      'Multi-Factor Risk Signals',
+                      style: TextStyle(fontWeight: FontWeight.bold, fontSize: 15),
+                    ),
+                    const SizedBox(height: 12),
+                    _buildRiskRow('Financial Strain', student.hasFeeOverdue ? 'Overdue Fee' : 'Clear', student.hasFeeOverdue),
+                    const SizedBox(height: 8),
+                    _buildRiskRow('Attendance Drop', student.attendanceRate < 75 ? 'Low Attendance' : 'Stable', student.attendanceRate < 75),
+                    const SizedBox(height: 8),
+                    _buildRiskRow('Academic Struggle', (student.latestScore ?? 100) < 60 ? 'Declining Scores' : 'On Track', (student.latestScore ?? 100) < 60),
+                  ],
+                ),
+              ),
+            ],
+          ),
+        ),
+      ),
+    );
+  }
+
+  Widget _buildRiskRow(String title, String status, bool isRisk) {
+    return Row(
+      mainAxisAlignment: MainAxisAlignment.spaceBetween,
+      children: [
+        Text(title, style: AppTextStyles.bodyMd),
+        Container(
+          padding: const EdgeInsets.symmetric(horizontal: 10, vertical: 4),
+          decoration: BoxDecoration(
+            color: isRisk ? AppColors.riskHigh.withValues(alpha: 0.1) : AppColors.success.withValues(alpha: 0.1),
+            borderRadius: BorderRadius.circular(12),
+          ),
+          child: Text(
+            status,
+            style: TextStyle(
+              fontSize: 12,
+              fontWeight: FontWeight.bold,
+              color: isRisk ? AppColors.riskHigh : AppColors.success,
+            ),
+          ),
+        ),
+      ],
+    );
+  }
+
   @override
   Widget build(BuildContext context) {
     return Scaffold(
@@ -225,6 +459,7 @@ You are a data extraction specialist. Extract structured student data from raw O
                       student: _currentStudent!,
                       isRunning: _isRunning,
                       onRunAnalysis: _runLiveAnalysis,
+                      onViewResults: () => _showPerformanceCharts(context, _currentStudent!),
                     ),
                     const SizedBox(height: 20),
                   ],
@@ -442,11 +677,13 @@ class _StudentHeaderCard extends StatelessWidget {
   final Student student;
   final bool isRunning;
   final VoidCallback onRunAnalysis;
+  final VoidCallback onViewResults;
 
   const _StudentHeaderCard({
     required this.student,
     required this.isRunning,
     required this.onRunAnalysis,
+    required this.onViewResults,
   });
 
   @override
@@ -490,24 +727,42 @@ class _StudentHeaderCard extends StatelessWidget {
             ],
           ),
           const SizedBox(height: 14),
-          SizedBox(
-            width: double.infinity,
-            child: ElevatedButton.icon(
-              onPressed: isRunning ? null : onRunAnalysis,
-              icon: isRunning
-                  ? const SizedBox(
-                      width: 16,
-                      height: 16,
-                      child: CircularProgressIndicator(strokeWidth: 2, color: Colors.white),
-                    )
-                  : const Icon(Icons.auto_awesome, size: 18),
-              label: Text(isRunning ? 'Running LLM Analysis...' : 'Run AI Analysis'),
-              style: ElevatedButton.styleFrom(
-                backgroundColor: AppColors.primary,
-                foregroundColor: AppColors.onPrimary,
-                padding: const EdgeInsets.symmetric(vertical: 12),
+          Row(
+            children: [
+              Expanded(
+                child: ElevatedButton.icon(
+                  onPressed: isRunning ? null : onRunAnalysis,
+                  icon: isRunning
+                      ? const SizedBox(
+                          width: 14,
+                          height: 14,
+                          child: CircularProgressIndicator(strokeWidth: 2, color: Colors.white),
+                        )
+                      : const Icon(Icons.auto_awesome, size: 16),
+                  label: Text(isRunning ? 'Analyzing...' : 'Run AI Analysis'),
+                  style: ElevatedButton.styleFrom(
+                    backgroundColor: AppColors.primary,
+                    foregroundColor: AppColors.onPrimary,
+                    padding: const EdgeInsets.symmetric(vertical: 12),
+                    shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(10)),
+                  ),
+                ),
               ),
-            ),
+              const SizedBox(width: 10),
+              Expanded(
+                child: OutlinedButton.icon(
+                  onPressed: onViewResults,
+                  icon: const Icon(Icons.bar_chart_rounded, size: 16),
+                  label: const Text('View Results'),
+                  style: OutlinedButton.styleFrom(
+                    foregroundColor: AppColors.primary,
+                    side: const BorderSide(color: AppColors.primary),
+                    padding: const EdgeInsets.symmetric(vertical: 12),
+                    shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(10)),
+                  ),
+                ),
+              ),
+            ],
           ),
         ],
       ),

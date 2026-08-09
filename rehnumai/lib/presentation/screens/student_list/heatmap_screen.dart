@@ -1,5 +1,7 @@
 import 'dart:math' as math;
 import 'package:flutter/material.dart';
+import 'package:provider/provider.dart';
+import '../../../core/app_state.dart';
 import '../../../core/constants/app_colors.dart';
 import '../../../core/constants/app_theme.dart';
 import '../../../data/models/mock_students.dart';
@@ -25,41 +27,6 @@ class StudentTile {
   final String lastLogged;
 }
 
-const List<StudentTile> _students = [
-  StudentTile(initials: 'AK', name: 'Ali', risk: RiskLevel.stable),
-  StudentTile(initials: 'SM', name: 'Sara', risk: RiskLevel.stable),
-  StudentTile(initials: 'ZB', name: 'Zain', risk: RiskLevel.stable),
-  StudentTile(initials: 'HY', name: 'Haya', risk: RiskLevel.medium),
-  StudentTile(initials: 'FT', name: 'Fatima', risk: RiskLevel.stable),
-  StudentTile(initials: 'UF', name: 'Umar', risk: RiskLevel.high, lastLogged: '2 hrs ago'),
-  StudentTile(initials: 'RN', name: 'Rana', risk: RiskLevel.stable),
-  StudentTile(initials: 'LA', name: 'Laila', risk: RiskLevel.stable),
-  StudentTile(initials: 'MS', name: 'Musa', risk: RiskLevel.medium),
-  StudentTile(initials: 'DK', name: 'Danish', risk: RiskLevel.stable),
-  StudentTile(initials: 'TJ', name: 'Taj', risk: RiskLevel.stable),
-  StudentTile(initials: 'WQ', name: 'Waqas', risk: RiskLevel.high),
-  StudentTile(initials: 'PL', name: 'Pal', risk: RiskLevel.stable),
-  StudentTile(initials: 'GH', name: 'Ghani', risk: RiskLevel.stable),
-  StudentTile(initials: 'ER', name: 'Erum', risk: RiskLevel.high),
-  StudentTile(initials: 'TY', name: 'Tayyab', risk: RiskLevel.stable),
-  StudentTile(initials: 'UI', name: 'Umair', risk: RiskLevel.stable),
-  StudentTile(initials: 'OP', name: 'Omer', risk: RiskLevel.medium),
-  StudentTile(initials: 'AS', name: 'Asad', risk: RiskLevel.stable),
-  StudentTile(initials: 'DF', name: 'Daud', risk: RiskLevel.stable),
-  StudentTile(initials: 'CV', name: 'Cavi', risk: RiskLevel.stable),
-  StudentTile(initials: 'NB', name: 'Nadia', risk: RiskLevel.stable),
-  StudentTile(initials: 'KR', name: 'Kamran', risk: RiskLevel.medium),
-  StudentTile(initials: 'SI', name: 'Sania', risk: RiskLevel.stable),
-  StudentTile(initials: 'YA', name: 'Yasir', risk: RiskLevel.stable),
-  StudentTile(initials: 'BH', name: 'Bushra', risk: RiskLevel.stable),
-  StudentTile(initials: 'TK', name: 'Tariq', risk: RiskLevel.stable),
-  StudentTile(initials: 'MZ', name: 'Maaz', risk: RiskLevel.high),
-  StudentTile(initials: 'RB', name: 'Rabail', risk: RiskLevel.stable),
-  StudentTile(initials: 'IQ', name: 'Iqra', risk: RiskLevel.stable),
-  StudentTile(initials: 'SH', name: 'Shams', risk: RiskLevel.high),
-  StudentTile(initials: 'FQ', name: 'Faiqa', risk: RiskLevel.stable),
-];
-
 // ─── Screen ──────────────────────────────────────────────────────────────────
 
 class HeatmapScreen extends StatefulWidget {
@@ -72,18 +39,22 @@ class HeatmapScreen extends StatefulWidget {
 class _HeatmapScreenState extends State<HeatmapScreen> {
   String _searchQuery = '';
 
-  // Counts
-  int get _highCount => _students.where((s) => s.risk == RiskLevel.high).length;
-  int get _mediumCount =>
-      _students.where((s) => s.risk == RiskLevel.medium).length;
-  int get _stableCount =>
-      _students.where((s) => s.risk == RiskLevel.stable).length;
-
-  List<StudentTile> get _filteredStudents {
-    if (_searchQuery.isEmpty) return _students;
-    return _students
-        .where((s) => s.name.toLowerCase().contains(_searchQuery.toLowerCase()))
-        .toList();
+  List<StudentTile> _getActiveStudents(List<Student> activeStudents) {
+    if (activeStudents.isEmpty) return const [];
+    return activeStudents.map((s) {
+      final initials = s.name.trim().split(' ').map((e) => e.isNotEmpty ? e[0] : '').join().toUpperCase();
+      RiskLevel risk = RiskLevel.stable;
+      if (s.hasFeeOverdue || s.attendanceRate < 60) {
+        risk = RiskLevel.high;
+      } else if (s.attendanceRate < 80 || (s.latestScore != null && s.latestScore! < 65)) {
+        risk = RiskLevel.medium;
+      }
+      return StudentTile(
+        initials: initials.isNotEmpty ? initials : 'ST',
+        name: s.name,
+        risk: risk,
+      );
+    }).toList();
   }
 
   void _showLogDialog(StudentTile student) {
@@ -95,6 +66,16 @@ class _HeatmapScreenState extends State<HeatmapScreen> {
 
   @override
   Widget build(BuildContext context) {
+    final appState = Provider.of<AppState>(context);
+    final currentStudents = _getActiveStudents(appState.students);
+    final highCount = currentStudents.where((s) => s.risk == RiskLevel.high).length;
+    final mediumCount = currentStudents.where((s) => s.risk == RiskLevel.medium).length;
+    final stableCount = currentStudents.where((s) => s.risk == RiskLevel.stable).length;
+
+    final filteredStudents = _searchQuery.isEmpty
+        ? currentStudents
+        : currentStudents.where((s) => s.name.toLowerCase().contains(_searchQuery.toLowerCase())).toList();
+
     return Scaffold(
       backgroundColor: AppColors.surfaceBright,
       appBar: const AppTopBar(),
@@ -111,9 +92,26 @@ class _HeatmapScreenState extends State<HeatmapScreen> {
               ),
             ),
             ListTile(
-              leading: const Icon(Icons.settings),
-              title: const Text('Settings'),
-              onTap: () => Navigator.pop(context),
+              leading: const Icon(Icons.delete_outline, color: Colors.red),
+              title: const Text('Clear All Dummy Data'),
+              onTap: () {
+                Navigator.pop(context);
+                appState.clearAllDummyData();
+                ScaffoldMessenger.of(context).showSnackBar(
+                  const SnackBar(content: Text('All dummy data cleared!')),
+                );
+              },
+            ),
+            ListTile(
+              leading: const Icon(Icons.restore, color: AppColors.primary),
+              title: const Text('Reset Sample Data'),
+              onTap: () {
+                Navigator.pop(context);
+                appState.resetDummyData();
+                ScaffoldMessenger.of(context).showSnackBar(
+                  const SnackBar(content: Text('Dataset reset to sample students!')),
+                );
+              },
             ),
           ],
         ),
@@ -135,10 +133,10 @@ class _HeatmapScreenState extends State<HeatmapScreen> {
           crossAxisAlignment: CrossAxisAlignment.start,
           children: [
             _ClassStatusCard(
-              total: _students.length,
-              highCount: _highCount,
-              mediumCount: _mediumCount,
-              stableCount: _stableCount,
+              total: currentStudents.length,
+              highCount: highCount,
+              mediumCount: mediumCount,
+              stableCount: stableCount,
             ),
             const SizedBox(height: 24),
             TextField(
@@ -171,15 +169,38 @@ class _HeatmapScreenState extends State<HeatmapScreen> {
               ),
             ),
             const SizedBox(height: 12),
-            ..._filteredStudents.map((student) {
-              return Padding(
-                padding: const EdgeInsets.only(bottom: 8.0),
-                child: _StudentCard(
-                  student: student,
-                  onLog: () => _showLogDialog(student),
+            if (filteredStudents.isEmpty)
+              Padding(
+                padding: const EdgeInsets.symmetric(vertical: 40),
+                child: Center(
+                  child: Column(
+                    children: [
+                      const Icon(Icons.inbox_outlined, size: 48, color: AppColors.textLight),
+                      const SizedBox(height: 12),
+                      const Text(
+                        'No student records found.',
+                        style: TextStyle(fontSize: 16, fontWeight: FontWeight.w600, color: AppColors.textSecondary),
+                      ),
+                      const SizedBox(height: 6),
+                      ElevatedButton.icon(
+                        onPressed: () => appState.resetDummyData(),
+                        icon: const Icon(Icons.restore, size: 18),
+                        label: const Text('Load Sample Students'),
+                      ),
+                    ],
+                  ),
                 ),
-              );
-            }),
+              )
+            else
+              ...filteredStudents.map((student) {
+                return Padding(
+                  padding: const EdgeInsets.only(bottom: 8.0),
+                  child: _StudentCard(
+                    student: student,
+                    onLog: () => _showLogDialog(student),
+                  ),
+                );
+              }),
           ],
         ),
       ),
@@ -415,19 +436,23 @@ class _StudentCard extends StatelessWidget {
         RiskLevel.stable => AppColors.tertiaryFixed,
       };
 
-  Student _getStudentModel(StudentTile tile) {
+  Student _getStudentModel(BuildContext context, StudentTile tile) {
+    final appState = Provider.of<AppState>(context, listen: false);
+    final match = appState.students.where((s) => s.name.toLowerCase() == tile.name.toLowerCase());
+    if (match.isNotEmpty) return match.first;
+
     if (tile.risk == RiskLevel.high) {
-      return mockStudents[0]; // Amina Khan (Financial Strain)
+      return mockStudents[0];
     } else if (tile.risk == RiskLevel.medium) {
-      return mockStudents[1]; // Tariq Ahmed (Academic Struggle)
+      return mockStudents[1];
     } else {
-      return mockStudents[2]; // Bilal Raza (Sick Week / False Positive)
+      return mockStudents[2];
     }
   }
 
   @override
   Widget build(BuildContext context) {
-    final targetStudent = _getStudentModel(student);
+    final targetStudent = _getStudentModel(context, student);
 
     return InkWell(
       onTap: () {
