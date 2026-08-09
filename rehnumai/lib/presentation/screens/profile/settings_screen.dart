@@ -1,6 +1,5 @@
 import 'package:flutter/material.dart';
 import 'package:provider/provider.dart';
-import '../../../core/constants/app_theme.dart';
 import '../../../core/app_state.dart';
 
 class SettingsScreen extends StatelessWidget {
