@@ -17,8 +17,8 @@ class StudentRepository {
   List<Student> get students => List.unmodifiable(_students);
   List<LogEntry> get logs => List.unmodifiable(_logs);
 
-  static const String _studentsPrefKey = 'rehnumai_saved_students_v1';
-  static const String _logsPrefKey = 'rehnumai_saved_logs_v1';
+  static const String _studentsPrefKey = 'rehnumai_saved_students_v2';
+  static const String _logsPrefKey = 'rehnumai_saved_logs_v2';
 
   /// Initializes persistence and loads stored data or sample data.
   Future<void> init() async {
@@ -41,11 +41,9 @@ class StudentRepository {
             _students.add(Student.fromJson(item));
           }
         }
-      } catch (_) {
-        _students.addAll(mockStudents);
-      }
+      } catch (_) {}
     } else {
-      _students.addAll(mockStudents);
+      // Start fresh with an empty student dataset
       await _saveStudentsToPrefs();
     }
 

@@ -16,48 +16,63 @@ class AppBottomNav extends StatelessWidget {
 
   @override
   Widget build(BuildContext context) {
+    final isDark = AppColors.isDark(context);
+    final navBg = isDark ? const Color(0xFF26211D) : AppColors.surfaceContainer;
+    final indicatorBg = isDark ? const Color(0xFF42372F) : AppColors.surfaceContainerHigh;
+    final textPrimary = AppColors.getTextPrimary(context);
+    final textSecondary = AppColors.getTextSecondary(context);
+
     return NavigationBarTheme(
       data: NavigationBarThemeData(
+        backgroundColor: navBg,
+        indicatorColor: indicatorBg,
+        surfaceTintColor: Colors.transparent,
+        elevation: 0,
+        labelBehavior: NavigationDestinationLabelBehavior.alwaysShow,
         labelTextStyle: WidgetStateProperty.resolveWith((states) {
           if (states.contains(WidgetState.selected)) {
-            return const TextStyle(color: AppColors.inkText, fontWeight: FontWeight.bold);
+            return TextStyle(color: textPrimary, fontWeight: FontWeight.bold, fontSize: 12);
           }
-          return TextStyle(color: AppColors.inkText.withValues(alpha: 0.7));
+          return TextStyle(color: textSecondary, fontSize: 12);
+        }),
+        iconTheme: WidgetStateProperty.resolveWith((states) {
+          if (states.contains(WidgetState.selected)) {
+            return const IconThemeData(color: AppColors.primary);
+          }
+          return IconThemeData(color: textSecondary);
         }),
       ),
       child: NavigationBar(
         selectedIndex: currentIndex,
         onDestinationSelected: onDestinationSelected,
-        backgroundColor: AppColors.surfaceContainer,
-        indicatorColor: AppColors.surfaceContainerHigh,
+        backgroundColor: navBg,
+        indicatorColor: indicatorBg,
         surfaceTintColor: Colors.transparent,
         elevation: 0,
-        labelBehavior: NavigationDestinationLabelBehavior.alwaysShow,
-        destinations: [
+        destinations: const [
           NavigationDestination(
-            icon: const Icon(Icons.grid_view_outlined),
-            selectedIcon: const Icon(Icons.grid_view),
-            label: _label('Home'),
+            icon: Icon(Icons.grid_view_outlined),
+            selectedIcon: Icon(Icons.grid_view),
+            label: 'Home',
           ),
           NavigationDestination(
-            icon: const Icon(Icons.edit_note_outlined),
-            selectedIcon: const Icon(Icons.edit_note),
-            label: _label('Logs'),
+            icon: Icon(Icons.edit_note_outlined),
+            selectedIcon: Icon(Icons.edit_note),
+            label: 'Logs',
           ),
           NavigationDestination(
-            icon: const Icon(Icons.analytics_outlined),
-            selectedIcon: const Icon(Icons.analytics),
-            label: _label('View'),
+            icon: Icon(Icons.analytics_outlined),
+            selectedIcon: Icon(Icons.analytics),
+            label: 'View',
           ),
           NavigationDestination(
-            icon: const Icon(Icons.message_outlined),
-            selectedIcon: const Icon(Icons.message),
-            label: _label('Action'),
+            icon: Icon(Icons.message_outlined),
+            selectedIcon: Icon(Icons.message),
+            label: 'Action',
           ),
         ],
       ),
     );
   }
-
-  String _label(String text) => text;
 }
+

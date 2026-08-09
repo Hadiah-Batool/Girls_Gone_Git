@@ -46,8 +46,12 @@ class _EntranceScreenState extends State<EntranceScreen> {
 
   @override
   Widget build(BuildContext context) {
+    final bg = AppColors.getBg(context);
+    final textPrimary = AppColors.getTextPrimary(context);
+    final textSecondary = AppColors.getTextSecondary(context);
+
     return Scaffold(
-      backgroundColor: AppColors.surfaceBright,
+      backgroundColor: bg,
       body: SafeArea(
         child: Center(
           child: SingleChildScrollView(
@@ -64,7 +68,7 @@ class _EntranceScreenState extends State<EntranceScreen> {
                     'Welcome to Rehnumai',
                     textAlign: TextAlign.center,
                     style: AppTextStyles.headlineLgMobile.copyWith(
-                      color: AppColors.onSurface,
+                      color: textPrimary,
                     ),
                   ),
                   const SizedBox(height: 8),
@@ -72,7 +76,7 @@ class _EntranceScreenState extends State<EntranceScreen> {
                     'Let\'s set up your teacher profile.',
                     textAlign: TextAlign.center,
                     style: AppTextStyles.bodyMd.copyWith(
-                      color: AppColors.onSurfaceVariant,
+                      color: textSecondary,
                     ),
                   ),
                   const SizedBox(height: 32),
@@ -120,23 +124,28 @@ class _EntranceScreenState extends State<EntranceScreen> {
     required String label,
     TextInputType keyboardType = TextInputType.text,
   }) {
+    final textPrimary = AppColors.getTextPrimary(context);
+    final textSecondary = AppColors.getTextSecondary(context);
+    final inputBg = AppColors.getCardBg(context);
+    final borderColor = AppColors.getBorderColor(context);
+
     return TextFormField(
       controller: controller,
       keyboardType: keyboardType,
-      style: const TextStyle(color: AppColors.onSurface, fontSize: 16),
+      style: TextStyle(color: textPrimary, fontSize: 16),
       decoration: InputDecoration(
         labelText: label,
-        labelStyle: const TextStyle(color: AppColors.onSurfaceVariant),
+        labelStyle: TextStyle(color: textSecondary),
         floatingLabelStyle: const TextStyle(color: AppColors.primary, fontWeight: FontWeight.bold),
         filled: true,
-        fillColor: AppColors.surfaceContainerLowest,
+        fillColor: inputBg,
         border: OutlineInputBorder(
           borderRadius: BorderRadius.circular(10),
-          borderSide: const BorderSide(color: AppColors.outlineVariant),
+          borderSide: BorderSide(color: borderColor),
         ),
         enabledBorder: OutlineInputBorder(
           borderRadius: BorderRadius.circular(10),
-          borderSide: const BorderSide(color: AppColors.outlineVariant),
+          borderSide: BorderSide(color: borderColor),
         ),
         focusedBorder: OutlineInputBorder(
           borderRadius: BorderRadius.circular(10),

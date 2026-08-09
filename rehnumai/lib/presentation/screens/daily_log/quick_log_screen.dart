@@ -7,6 +7,7 @@ import '../../../core/constants/app_theme.dart';
 import '../../../data/models/log_entry_model.dart';
 import '../../../data/models/student_model.dart';
 import '../../widgets/app_top_bar.dart';
+import '../../widgets/rehnumai_drawer.dart';
 
 class QuickLogScreen extends StatefulWidget {
   const QuickLogScreen({super.key});
@@ -157,6 +158,9 @@ class _QuickLogScreenState extends State<QuickLogScreen> {
     final textSecondary = AppColors.getTextSecondary(context);
     final borderColor = AppColors.getBorderColor(context);
 
+    if (_selectedStudentId != null && !students.any((s) => s.id == _selectedStudentId)) {
+      _selectedStudentId = students.isNotEmpty ? students.first.id : null;
+    }
     if (_selectedStudentId == null && students.isNotEmpty) {
       _selectedStudentId = students.first.id;
     }
@@ -164,6 +168,7 @@ class _QuickLogScreenState extends State<QuickLogScreen> {
     return Scaffold(
       backgroundColor: bg,
       appBar: const AppTopBar(),
+      drawer: const RehnumaiDrawer(),
       body: SingleChildScrollView(
         padding: const EdgeInsets.fromLTRB(16, 8, 16, 120),
         child: Column(
@@ -288,6 +293,7 @@ class _QuickLogScreenState extends State<QuickLogScreen> {
                       Text('Select Student', style: AppTextStyles.bodyLg.copyWith(fontWeight: FontWeight.bold, color: textPrimary)),
                       const SizedBox(height: 8),
                       DropdownButtonFormField<String>(
+                        key: ValueKey(_selectedStudentId),
                         initialValue: _selectedStudentId,
                         decoration: InputDecoration(
                           contentPadding: const EdgeInsets.symmetric(horizontal: 16, vertical: 14),

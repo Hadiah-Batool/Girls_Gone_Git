@@ -177,22 +177,26 @@ class _ScanSheetScreenState extends State<ScanSheetScreen> {
 
   @override
   Widget build(BuildContext context) {
+    final bg = AppColors.getBg(context);
+    final textPrimary = AppColors.getTextPrimary(context);
+    final textSecondary = AppColors.getTextSecondary(context);
+
     return Scaffold(
-      backgroundColor: AppColors.scaffoldBg,
+      backgroundColor: bg,
       appBar: AppBar(
         backgroundColor: Colors.transparent,
         elevation: 0,
         leading: IconButton(
           icon: const Icon(Icons.arrow_back_ios_new_rounded, size: 20),
-          color: AppColors.textPrimary,
+          color: textPrimary,
           onPressed: () => Navigator.of(context).pop(),
         ),
-        title: const Text(
+        title: Text(
           'Scan Sheet',
           style: TextStyle(
             fontSize: 18,
             fontWeight: FontWeight.w600,
-            color: AppColors.textPrimary,
+            color: textPrimary,
           ),
         ),
         centerTitle: true,
@@ -200,7 +204,7 @@ class _ScanSheetScreenState extends State<ScanSheetScreen> {
           if (_imageFile != null)
             IconButton(
               icon: const Icon(Icons.refresh_rounded),
-              color: AppColors.textSecondary,
+              color: textSecondary,
               onPressed: _reset,
               tooltip: 'Scan again',
             ),
@@ -209,14 +213,17 @@ class _ScanSheetScreenState extends State<ScanSheetScreen> {
       body: _isProcessingOcr
           ? _buildLoadingState()
           : _imageFile == null
-              ? _buildSourceSelection()
-              : _buildResultView(),
+              ? _buildSourceSelection(context)
+              : _buildResultView(context),
     );
   }
 
   // ── Source selection (no image yet) ─────────────────────────────────────
 
-  Widget _buildSourceSelection() {
+  Widget _buildSourceSelection(BuildContext context) {
+    final textPrimary = AppColors.getTextPrimary(context);
+    final textSecondary = AppColors.getTextSecondary(context);
+
     return Padding(
       padding: const EdgeInsets.symmetric(horizontal: 24),
       child: Column(
@@ -228,21 +235,21 @@ class _ScanSheetScreenState extends State<ScanSheetScreen> {
             color: AppColors.primary.withValues(alpha: 0.3),
           ),
           const SizedBox(height: 24),
-          const Text(
+          Text(
             'Choose how to scan',
             style: TextStyle(
               fontSize: 20,
               fontWeight: FontWeight.w600,
-              color: AppColors.textPrimary,
+              color: textPrimary,
             ),
           ),
           const SizedBox(height: 8),
-          const Text(
+          Text(
             'Take a photo of a student attendance, score, or fee sheet',
             textAlign: TextAlign.center,
             style: TextStyle(
               fontSize: 14,
-              color: AppColors.textSecondary,
+              color: textSecondary,
               height: 1.5,
             ),
           ),
@@ -344,8 +351,12 @@ class _ScanSheetScreenState extends State<ScanSheetScreen> {
 
   // ── Result view (image + extracted text) ───────────────────────────────
 
-  Widget _buildResultView() {
+  Widget _buildResultView(BuildContext context) {
     final hasText = _extractedText != null && _extractedText!.trim().isNotEmpty;
+    final cardBg = AppColors.getCardBg(context);
+    final textPrimary = AppColors.getTextPrimary(context);
+    final textSecondary = AppColors.getTextSecondary(context);
+    final borderColor = AppColors.getBorderColor(context);
 
     return Column(
       children: [
@@ -384,7 +395,7 @@ class _ScanSheetScreenState extends State<ScanSheetScreen> {
                         fontSize: 16,
                         fontWeight: FontWeight.w600,
                         color: hasText
-                            ? AppColors.textPrimary
+                            ? textPrimary
                             : AppColors.riskHigh,
                       ),
                     ),
@@ -397,9 +408,9 @@ class _ScanSheetScreenState extends State<ScanSheetScreen> {
                   width: double.infinity,
                   padding: const EdgeInsets.all(16),
                   decoration: BoxDecoration(
-                    color: Colors.white,
+                    color: cardBg,
                     borderRadius: BorderRadius.circular(12),
-                    border: Border.all(color: AppColors.divider),
+                    border: Border.all(color: borderColor),
                   ),
                   child: SelectableText(
                     hasText
@@ -411,8 +422,8 @@ class _ScanSheetScreenState extends State<ScanSheetScreen> {
                       height: 1.6,
                       fontFamily: hasText ? 'monospace' : null,
                       color: hasText
-                          ? AppColors.textPrimary
-                          : AppColors.textSecondary,
+                          ? textPrimary
+                          : textSecondary,
                     ),
                   ),
                 ),
@@ -443,7 +454,7 @@ class _ScanSheetScreenState extends State<ScanSheetScreen> {
         Container(
           padding: const EdgeInsets.fromLTRB(20, 16, 20, 32),
           decoration: BoxDecoration(
-            color: Colors.white,
+            color: cardBg,
             boxShadow: [
               BoxShadow(
                 color: Colors.black.withValues(alpha: 0.05),
@@ -483,8 +494,8 @@ class _ScanSheetScreenState extends State<ScanSheetScreen> {
                       icon: const Icon(Icons.refresh_rounded, size: 18),
                       label: const Text('Rescan'),
                       style: OutlinedButton.styleFrom(
-                        foregroundColor: AppColors.textSecondary,
-                        side: const BorderSide(color: AppColors.divider),
+                        foregroundColor: textSecondary,
+                        side: BorderSide(color: borderColor),
                         padding: const EdgeInsets.symmetric(vertical: 14),
                         shape: RoundedRectangleBorder(
                           borderRadius: BorderRadius.circular(12),
@@ -502,7 +513,7 @@ class _ScanSheetScreenState extends State<ScanSheetScreen> {
                       style: ElevatedButton.styleFrom(
                         backgroundColor: AppColors.primary,
                         foregroundColor: Colors.white,
-                        disabledBackgroundColor: AppColors.divider,
+                        disabledBackgroundColor: borderColor,
                         padding: const EdgeInsets.symmetric(vertical: 14),
                         shape: RoundedRectangleBorder(
                           borderRadius: BorderRadius.circular(12),
@@ -544,8 +555,13 @@ class _SourceButton extends StatelessWidget {
 
   @override
   Widget build(BuildContext context) {
+    final cardBg = AppColors.getCardBg(context);
+    final textPrimary = AppColors.getTextPrimary(context);
+    final textSecondary = AppColors.getTextSecondary(context);
+    final borderColor = AppColors.getBorderColor(context);
+
     return Material(
-      color: Colors.white,
+      color: cardBg,
       borderRadius: BorderRadius.circular(16),
       child: InkWell(
         onTap: onTap,
@@ -554,7 +570,7 @@ class _SourceButton extends StatelessWidget {
           padding: const EdgeInsets.all(20),
           decoration: BoxDecoration(
             borderRadius: BorderRadius.circular(16),
-            border: Border.all(color: AppColors.divider),
+            border: Border.all(color: borderColor),
           ),
           child: Row(
             children: [
@@ -574,18 +590,18 @@ class _SourceButton extends StatelessWidget {
                   children: [
                     Text(
                       label,
-                      style: const TextStyle(
+                      style: TextStyle(
                         fontSize: 15,
                         fontWeight: FontWeight.w600,
-                        color: AppColors.textPrimary,
+                        color: textPrimary,
                       ),
                     ),
                     const SizedBox(height: 2),
                     Text(
                       subtitle,
-                      style: const TextStyle(
+                      style: TextStyle(
                         fontSize: 12,
-                        color: AppColors.textSecondary,
+                        color: textSecondary,
                       ),
                     ),
                   ],

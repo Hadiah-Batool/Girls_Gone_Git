@@ -5,6 +5,7 @@ import '../../../core/constants/app_colors.dart';
 import '../../../core/constants/app_theme.dart';
 import '../../../data/models/student_model.dart';
 import '../../widgets/app_top_bar.dart';
+import '../../widgets/rehnumai_drawer.dart';
 
 class InterventionScreen extends StatefulWidget {
   const InterventionScreen({super.key});
@@ -42,6 +43,7 @@ class _InterventionScreenState extends State<InterventionScreen> {
     return Scaffold(
       backgroundColor: bg,
       appBar: const AppTopBar(),
+      drawer: const RehnumaiDrawer(),
       body: SingleChildScrollView(
         padding: const EdgeInsets.fromLTRB(16, 8, 16, 120),
         child: Column(

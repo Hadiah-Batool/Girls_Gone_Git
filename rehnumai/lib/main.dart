@@ -14,6 +14,7 @@ import 'presentation/screens/daily_log/quick_log_screen.dart';
 import 'presentation/screens/analysis/reasoning_trail_screen.dart';
 import 'presentation/screens/amal/intervention_screen.dart';
 import 'presentation/widgets/app_bottom_nav.dart';
+import 'presentation/widgets/rehnumai_drawer.dart';
 
 Future<void> main() async {
   WidgetsFlutterBinding.ensureInitialized();
@@ -76,6 +77,7 @@ class _MainShellState extends State<MainShell> {
   @override
   Widget build(BuildContext context) {
     return Scaffold(
+      drawer: const RehnumaiDrawer(),
       body: IndexedStack(index: _currentIndex, children: _screens),
       bottomNavigationBar: AppBottomNav(
         currentIndex: _currentIndex,

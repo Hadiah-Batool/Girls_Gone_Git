@@ -12,11 +12,11 @@ import '../../../core/app_state.dart';
 import '../../../core/constants/app_colors.dart';
 import '../../../core/constants/app_theme.dart';
 import '../../../core/services/gemini_service.dart';
-import '../../../data/models/mock_students.dart';
 import '../../../data/models/student_model.dart';
 import '../../../domain/agents/agent_orchestrator.dart';
 import '../../../domain/agents/agent_state.dart';
 import '../../widgets/app_top_bar.dart';
+import '../../widgets/rehnumai_drawer.dart';
 
 class ReasoningTrailScreen extends StatefulWidget {
   final String? scannedText;
@@ -50,14 +50,19 @@ class _ReasoningTrailScreenState extends State<ReasoningTrailScreen> {
   @override
   void initState() {
     super.initState();
-    // If a specific student was passed, use it directly.
-    // Otherwise, leave _currentStudent null — the user will pick from the list.
     if (widget.student != null) {
       _currentStudent = widget.student;
     }
     if (widget.autoRun || widget.scannedText != null) {
-      _currentStudent ??= mockStudents.first;
-      _runLiveAnalysis();
+      WidgetsBinding.instance.addPostFrameCallback((_) {
+        if (_currentStudent == null) {
+          final appState = Provider.of<AppState>(context, listen: false);
+          if (appState.students.isNotEmpty) {
+            _currentStudent = appState.students.first;
+          }
+        }
+        _runLiveAnalysis();
+      });
     }
   }
 
@@ -77,7 +82,8 @@ class _ReasoningTrailScreenState extends State<ReasoningTrailScreen> {
       _isRunning = true;
     });
 
-    Student targetStudent = _currentStudent ?? mockStudents.first;
+    final appState = Provider.of<AppState>(context, listen: false);
+    Student? targetStudent = _currentStudent ?? (appState.students.isNotEmpty ? appState.students.first : null);
 
     if (widget.scannedText != null && widget.scannedText!.trim().isNotEmpty) {
       try {
@@ -91,6 +97,16 @@ class _ReasoningTrailScreenState extends State<ReasoningTrailScreen> {
         });
         return;
       }
+    }
+
+    if (targetStudent == null) {
+      if (!mounted) return;
+      setState(() {
+        _isStructuring = false;
+        _isRunning = false;
+        _errorMessage = 'No student available for analysis. Please scan a sheet or add student data.';
+      });
+      return;
     }
 
     if (!mounted) return;
@@ -201,14 +217,20 @@ You are a data extraction specialist. Extract structured student data from raw O
       id: json['id'] as String? ?? 'stu_scan_001',
       name: json['name'] as String? ?? 'Scanned Student',
       grade: json['grade'] as String? ?? '7-B',
-      attendance: attendanceList.isNotEmpty ? attendanceList : mockStudents.first.attendance,
-      fees: feeList.isNotEmpty ? feeList : mockStudents.first.fees,
-      examScores: scores.isNotEmpty ? scores : mockStudents.first.examScores,
+      attendance: attendanceList,
+      fees: feeList,
+      examScores: scores,
       teacherNotes: const [],
     );
   }
 
   void _showPerformanceCharts(BuildContext context, Student student) {
+    final bg = AppColors.getBg(context);
+    final cardBg = AppColors.getCardBg(context);
+    final textPrimary = AppColors.getTextPrimary(context);
+    final textSecondary = AppColors.getTextSecondary(context);
+    final borderColor = AppColors.getBorderColor(context);
+
     showModalBottomSheet(
       context: context,
       isScrollControlled: true,
@@ -218,9 +240,9 @@ You are a data extraction specialist. Extract structured student data from raw O
         minChildSize: 0.5,
         maxChildSize: 0.95,
         builder: (_, scrollController) => Container(
-          decoration: const BoxDecoration(
-            color: Colors.white,
-            borderRadius: BorderRadius.vertical(top: Radius.circular(24)),
+          decoration: BoxDecoration(
+            color: bg,
+            borderRadius: const BorderRadius.vertical(top: Radius.circular(24)),
           ),
           padding: const EdgeInsets.all(20),
           child: ListView(
@@ -232,7 +254,7 @@ You are a data extraction specialist. Extract structured student data from raw O
                   height: 4,
                   margin: const EdgeInsets.only(bottom: 16),
                   decoration: BoxDecoration(
-                    color: AppColors.divider,
+                    color: borderColor,
                     borderRadius: BorderRadius.circular(2),
                   ),
                 ),
@@ -247,17 +269,17 @@ You are a data extraction specialist. Extract structured student data from raw O
                       children: [
                         Text(
                           '${student.name}\'s Analytics',
-                          style: AppTextStyles.headlineMd,
+                          style: AppTextStyles.headlineMd.copyWith(color: textPrimary),
                         ),
                         Text(
                           'Academic Scores & Attendance Trends',
-                          style: AppTextStyles.bodySm.copyWith(color: AppColors.onSurfaceVariant),
+                          style: AppTextStyles.bodySm.copyWith(color: textSecondary),
                         ),
                       ],
                     ),
                   ),
                   IconButton(
-                    icon: const Icon(Icons.close_rounded),
+                    icon: Icon(Icons.close_rounded, color: textPrimary),
                     onPressed: () => Navigator.of(ctx).pop(),
                   ),
                 ],
@@ -268,9 +290,9 @@ You are a data extraction specialist. Extract structured student data from raw O
               Container(
                 padding: const EdgeInsets.all(16),
                 decoration: BoxDecoration(
-                  color: AppColors.surfaceContainerLowest,
+                  color: cardBg,
                   borderRadius: BorderRadius.circular(16),
-                  border: Border.all(color: AppColors.divider),
+                  border: Border.all(color: borderColor),
                 ),
                 child: Column(
                   crossAxisAlignment: CrossAxisAlignment.start,
@@ -278,9 +300,9 @@ You are a data extraction specialist. Extract structured student data from raw O
                     Row(
                       mainAxisAlignment: MainAxisAlignment.spaceBetween,
                       children: [
-                        const Text(
+                        Text(
                           'Attendance Rate',
-                          style: TextStyle(fontWeight: FontWeight.bold, fontSize: 15),
+                          style: TextStyle(fontWeight: FontWeight.bold, fontSize: 15, color: textPrimary),
                         ),
                         Text(
                           '${student.attendanceRate.toStringAsFixed(1)}%',
@@ -302,7 +324,7 @@ You are a data extraction specialist. Extract structured student data from raw O
                       child: LinearProgressIndicator(
                         value: (student.attendanceRate / 100).clamp(0.0, 1.0),
                         minHeight: 10,
-                        backgroundColor: AppColors.divider,
+                        backgroundColor: borderColor,
                         color: student.attendanceRate >= 80
                             ? AppColors.success
                             : student.attendanceRate >= 60
@@ -313,7 +335,7 @@ You are a data extraction specialist. Extract structured student data from raw O
                     const SizedBox(height: 8),
                     Text(
                       'Total Logs: ${student.attendance.length} days | Present: ${student.attendance.where((a) => a.isPresent).length} days',
-                      style: AppTextStyles.bodySm.copyWith(color: AppColors.onSurfaceVariant),
+                      style: AppTextStyles.bodySm.copyWith(color: textSecondary),
                     ),
                   ],
                 ),
@@ -324,20 +346,20 @@ You are a data extraction specialist. Extract structured student data from raw O
               Container(
                 padding: const EdgeInsets.all(16),
                 decoration: BoxDecoration(
-                  color: AppColors.surfaceContainerLowest,
+                  color: cardBg,
                   borderRadius: BorderRadius.circular(16),
-                  border: Border.all(color: AppColors.divider),
+                  border: Border.all(color: borderColor),
                 ),
                 child: Column(
                   crossAxisAlignment: CrossAxisAlignment.start,
                   children: [
-                    const Text(
+                    Text(
                       'Academic Score Progression',
-                      style: TextStyle(fontWeight: FontWeight.bold, fontSize: 15),
+                      style: TextStyle(fontWeight: FontWeight.bold, fontSize: 15, color: textPrimary),
                     ),
                     const SizedBox(height: 14),
                     if (student.examScores.isEmpty)
-                      const Text('No exam scores recorded yet.')
+                      Text('No exam scores recorded yet.', style: TextStyle(color: textSecondary))
                     else
                       ...student.examScores.entries.map((entry) {
                         final dateStr = entry.key.toIso8601String().split('T').first;
@@ -350,7 +372,7 @@ You are a data extraction specialist. Extract structured student data from raw O
                               Row(
                                 mainAxisAlignment: MainAxisAlignment.spaceBetween,
                                 children: [
-                                  Text(dateStr, style: AppTextStyles.bodySm),
+                                  Text(dateStr, style: AppTextStyles.bodySm.copyWith(color: textPrimary)),
                                   Text(
                                     '${score.toStringAsFixed(1)}%',
                                     style: TextStyle(
@@ -370,7 +392,7 @@ You are a data extraction specialist. Extract structured student data from raw O
                                 child: LinearProgressIndicator(
                                   value: (score / 100).clamp(0.0, 1.0),
                                   minHeight: 8,
-                                  backgroundColor: AppColors.divider,
+                                  backgroundColor: borderColor,
                                   color: score >= 75
                                       ? AppColors.success
                                       : score >= 50
@@ -391,23 +413,23 @@ You are a data extraction specialist. Extract structured student data from raw O
               Container(
                 padding: const EdgeInsets.all(16),
                 decoration: BoxDecoration(
-                  color: AppColors.surfaceContainerLowest,
+                  color: cardBg,
                   borderRadius: BorderRadius.circular(16),
-                  border: Border.all(color: AppColors.divider),
+                  border: Border.all(color: borderColor),
                 ),
                 child: Column(
                   crossAxisAlignment: CrossAxisAlignment.start,
                   children: [
-                    const Text(
+                    Text(
                       'Multi-Factor Risk Signals',
-                      style: TextStyle(fontWeight: FontWeight.bold, fontSize: 15),
+                      style: TextStyle(fontWeight: FontWeight.bold, fontSize: 15, color: textPrimary),
                     ),
                     const SizedBox(height: 12),
-                    _buildRiskRow('Financial Strain', student.hasFeeOverdue ? 'Overdue Fee' : 'Clear', student.hasFeeOverdue),
+                    _buildRiskRow(context, 'Financial Strain', student.hasFeeOverdue ? 'Overdue Fee' : 'Clear', student.hasFeeOverdue),
                     const SizedBox(height: 8),
-                    _buildRiskRow('Attendance Drop', student.attendanceRate < 75 ? 'Low Attendance' : 'Stable', student.attendanceRate < 75),
+                    _buildRiskRow(context, 'Attendance Drop', student.attendanceRate < 75 ? 'Low Attendance' : 'Stable', student.attendanceRate < 75),
                     const SizedBox(height: 8),
-                    _buildRiskRow('Academic Struggle', (student.latestScore ?? 100) < 60 ? 'Declining Scores' : 'On Track', (student.latestScore ?? 100) < 60),
+                    _buildRiskRow(context, 'Academic Struggle', (student.latestScore ?? 100) < 60 ? 'Declining Scores' : 'On Track', (student.latestScore ?? 100) < 60),
                   ],
                 ),
               ),
@@ -418,11 +440,12 @@ You are a data extraction specialist. Extract structured student data from raw O
     );
   }
 
-  Widget _buildRiskRow(String title, String status, bool isRisk) {
+  Widget _buildRiskRow(BuildContext context, String title, String status, bool isRisk) {
+    final textPrimary = AppColors.getTextPrimary(context);
     return Row(
       mainAxisAlignment: MainAxisAlignment.spaceBetween,
       children: [
-        Text(title, style: AppTextStyles.bodyMd),
+        Text(title, style: AppTextStyles.bodyMd.copyWith(color: textPrimary)),
         Container(
           padding: const EdgeInsets.symmetric(horizontal: 10, vertical: 4),
           decoration: BoxDecoration(
@@ -448,6 +471,7 @@ You are a data extraction specialist. Extract structured student data from raw O
     return Scaffold(
       backgroundColor: bg,
       appBar: const AppTopBar(),
+      drawer: const RehnumaiDrawer(),
       body: Column(
         children: [
           if (_isRunning || _isStructuring)
@@ -488,12 +512,12 @@ You are a data extraction specialist. Extract structured student data from raw O
                   Row(
                     mainAxisAlignment: MainAxisAlignment.spaceBetween,
                     children: [
-                      const Text(
+                      Text(
                         'Reasoning Trail',
                         style: TextStyle(
                           fontSize: 18,
                           fontWeight: FontWeight.bold,
-                          color: AppColors.onSurface,
+                          color: AppColors.getTextPrimary(context),
                         ),
                       ),
                       if (!_isRunning && !_isStructuring)
@@ -596,13 +620,18 @@ You are a data extraction specialist. Extract structured student data from raw O
     final rootCause = _finalSummary?['root_cause'] as String? ?? 'Financial Strain';
     final confidence = _finalSummary?['confidence'] as String? ?? 'High';
 
+    final cardBg = AppColors.getCardBg(context);
+    final textPrimary = AppColors.getTextPrimary(context);
+    final textSecondary = AppColors.getTextSecondary(context);
+    final borderColor = AppColors.getBorderColor(context);
+
     return Container(
       padding: const EdgeInsets.all(20),
       decoration: BoxDecoration(
-        color: AppColors.surfaceContainerLowest,
+        color: cardBg,
         boxShadow: [
           BoxShadow(
-            color: Colors.black.withValues(alpha: 0.08),
+            color: Colors.black.withValues(alpha: 0.15),
             blurRadius: 10,
             offset: const Offset(0, -4),
           ),
@@ -626,12 +655,12 @@ You are a data extraction specialist. Extract structured student data from raw O
               Container(
                 padding: const EdgeInsets.symmetric(horizontal: 10, vertical: 6),
                 decoration: BoxDecoration(
-                  color: AppColors.surfaceContainerHigh,
+                  color: AppColors.isDark(context) ? const Color(0xFF382F28) : AppColors.surfaceContainerHigh,
                   borderRadius: BorderRadius.circular(8),
                 ),
                 child: Text(
                   'Confidence: $confidence',
-                  style: AppTextStyles.bodySm.copyWith(fontWeight: FontWeight.w600),
+                  style: AppTextStyles.bodySm.copyWith(fontWeight: FontWeight.w600, color: textPrimary),
                 ),
               ),
             ],
@@ -639,19 +668,19 @@ You are a data extraction specialist. Extract structured student data from raw O
           const SizedBox(height: 12),
           Text(
             'Suggested Intervention Message',
-            style: AppTextStyles.labelCaps.copyWith(color: AppColors.onSurfaceVariant),
+            style: AppTextStyles.labelCaps.copyWith(color: textSecondary),
           ),
           const SizedBox(height: 6),
           Container(
             padding: const EdgeInsets.all(14),
             decoration: BoxDecoration(
-              color: AppColors.surfaceContainerLow,
+              color: AppColors.isDark(context) ? const Color(0xFF26211D) : AppColors.surfaceContainerLow,
               borderRadius: BorderRadius.circular(12),
-              border: Border.all(color: AppColors.outlineVariant.withValues(alpha: 0.5)),
+              border: Border.all(color: borderColor),
             ),
             child: Text(
               message,
-              style: AppTextStyles.bodyMd.copyWith(color: AppColors.onSurface),
+              style: AppTextStyles.bodyMd.copyWith(color: textPrimary),
             ),
           ),
           const SizedBox(height: 14),
@@ -665,11 +694,10 @@ You are a data extraction specialist. Extract structured student data from raw O
                       const SnackBar(content: Text('Message copied to clipboard')),
                     );
                   },
-                  icon: const Icon(Icons.copy, size: 16),
-                  label: const Text('Copy'),
+                  icon: Icon(Icons.copy, size: 16, color: textPrimary),
+                  label: Text('Copy', style: TextStyle(color: textPrimary)),
                   style: OutlinedButton.styleFrom(
-                    foregroundColor: AppColors.onSurface,
-                    side: const BorderSide(color: AppColors.outline),
+                    side: BorderSide(color: borderColor),
                   ),
                 ),
               ),
@@ -710,12 +738,17 @@ class _StudentHeaderCard extends StatelessWidget {
 
   @override
   Widget build(BuildContext context) {
+    final cardBg = AppColors.getCardBg(context);
+    final textPrimary = AppColors.getTextPrimary(context);
+    final textSecondary = AppColors.getTextSecondary(context);
+    final borderColor = AppColors.getBorderColor(context);
+
     return Container(
       padding: const EdgeInsets.all(16),
       decoration: BoxDecoration(
-        color: AppColors.surfaceContainerLowest,
+        color: cardBg,
         borderRadius: BorderRadius.circular(16),
-        border: Border.all(color: AppColors.outlineVariant.withValues(alpha: 0.5)),
+        border: Border.all(color: borderColor),
       ),
       child: Column(
         children: [
@@ -736,12 +769,12 @@ class _StudentHeaderCard extends StatelessWidget {
                   children: [
                     Text(
                       student.name,
-                      style: AppTextStyles.bodyLg.copyWith(fontWeight: FontWeight.bold, color: AppColors.onSurface),
+                      style: AppTextStyles.bodyLg.copyWith(fontWeight: FontWeight.bold, color: textPrimary),
                     ),
                     const SizedBox(height: 2),
                     Text(
                       'Grade: ${student.grade}  •  Attendance: ${student.attendanceRate.toStringAsFixed(1)}%',
-                      style: AppTextStyles.bodySm.copyWith(color: AppColors.onSurfaceVariant),
+                      style: AppTextStyles.bodySm.copyWith(color: textSecondary),
                     ),
                   ],
                 ),
@@ -799,13 +832,18 @@ class _AgentEventCard extends StatelessWidget {
 
   @override
   Widget build(BuildContext context) {
+    final cardBg = AppColors.getCardBg(context);
+    final textPrimary = AppColors.getTextPrimary(context);
+    final textSecondary = AppColors.getTextSecondary(context);
+    final borderColor = AppColors.getBorderColor(context);
+
     return Container(
       margin: const EdgeInsets.only(bottom: 12),
       padding: const EdgeInsets.all(14),
       decoration: BoxDecoration(
-        color: AppColors.surfaceContainerLowest,
+        color: cardBg,
         borderRadius: BorderRadius.circular(14),
-        border: Border.all(color: AppColors.outlineVariant.withValues(alpha: 0.5)),
+        border: Border.all(color: borderColor),
       ),
       child: Row(
         crossAxisAlignment: CrossAxisAlignment.start,
@@ -813,7 +851,7 @@ class _AgentEventCard extends StatelessWidget {
           Container(
             padding: const EdgeInsets.all(8),
             decoration: BoxDecoration(
-              color: AppColors.surfaceContainerHigh,
+              color: AppColors.isDark(context) ? const Color(0xFF382F28) : AppColors.surfaceContainerHigh,
               borderRadius: BorderRadius.circular(10),
             ),
             child: Text(event.step.icon, style: const TextStyle(fontSize: 20)),
@@ -828,7 +866,7 @@ class _AgentEventCard extends StatelessWidget {
                   children: [
                     Text(
                       event.agentName,
-                      style: AppTextStyles.bodyMd.copyWith(fontWeight: FontWeight.bold, color: AppColors.onSurface),
+                      style: AppTextStyles.bodyMd.copyWith(fontWeight: FontWeight.bold, color: textPrimary),
                     ),
                     if (event.isDone)
                       const Icon(Icons.check_circle, size: 16, color: AppColors.primary),
@@ -837,7 +875,7 @@ class _AgentEventCard extends StatelessWidget {
                 const SizedBox(height: 4),
                 Text(
                   event.statusMessage,
-                  style: AppTextStyles.bodySm.copyWith(color: AppColors.onSurfaceVariant),
+                  style: AppTextStyles.bodySm.copyWith(color: textSecondary),
                 ),
               ],
             ),
@@ -861,12 +899,16 @@ class _TeacherOverrideCard extends StatelessWidget {
 
   @override
   Widget build(BuildContext context) {
+    final cardBg = AppColors.getCardBg(context);
+    final textPrimary = AppColors.getTextPrimary(context);
+    final borderColor = AppColors.getBorderColor(context);
+
     return Container(
       padding: const EdgeInsets.all(16),
       decoration: BoxDecoration(
-        color: AppColors.surfaceContainerLowest,
+        color: cardBg,
         borderRadius: BorderRadius.circular(16),
-        border: Border.all(color: AppColors.outlineVariant.withValues(alpha: 0.5)),
+        border: Border.all(color: borderColor),
       ),
       child: Column(
         crossAxisAlignment: CrossAxisAlignment.start,
@@ -876,7 +918,7 @@ class _TeacherOverrideCard extends StatelessWidget {
             children: [
               Text(
                 'Teacher Override',
-                style: AppTextStyles.bodyLg.copyWith(fontWeight: FontWeight.bold, color: AppColors.onSurface),
+                style: AppTextStyles.bodyLg.copyWith(fontWeight: FontWeight.bold, color: textPrimary),
               ),
               Switch(
                 value: isOn,
@@ -890,9 +932,10 @@ class _TeacherOverrideCard extends StatelessWidget {
             TextField(
               controller: controller,
               maxLines: 2,
-              style: AppTextStyles.bodyMd.copyWith(color: AppColors.onSurface),
-              decoration: const InputDecoration(
+              style: AppTextStyles.bodyMd.copyWith(color: textPrimary),
+              decoration: InputDecoration(
                 hintText: 'Add teacher context or correction note...',
+                hintStyle: TextStyle(color: AppColors.getTextSecondary(context)),
               ),
             ),
           ],
