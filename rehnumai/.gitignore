@@ -1,48 +1,87 @@
-# Miscellaneous
-*.class
-*.log
-*.pyc
-*.swp
-.DS_Store
-.atom/
-.build/
-.buildlog/
-.history
-.svn/
-.swiftpm/
-migrate_working_dir/
+# Environment variables, secrets & API keys
+.env
+.env.*
+*.env
+*.pem
+*.key
+*.p12
+*.pfx
+*.keystore
+*.jks
+google-services.json
+GoogleService-Info.plist
+secrets.json
 
-# IntelliJ related
-*.iml
-*.ipr
-*.iws
-.idea/
+# Large Application Binaries & Build Outputs
+*.apk
+*.aab
+*.ap_
+*.ipa
+*.app
+*.dmg
+*.exe
+*.dll
+*.so
+*.dylib
+*.iso
+*.bin
+*.zip
+*.tar.gz
+*.rar
+*.7z
+*.aar
+*.jar
 
-# The .vscode folder contains launch configuration and tasks you configure in
-# VS Code which you may wish to be included in version control, so this line
-# is commented out by default.
-#.vscode/
-
-# Flutter/Dart/Pub related
-**/doc/api/
-**/ios/Flutter/.last_build_id
+# Build & Cache Directories
+build/
+**/build/
+dist/
+out/
+bin/
+obj/
 .dart_tool/
+**/.dart_tool/
+.flutter-plugins
 .flutter-plugins-dependencies
 .pub-cache/
 .pub/
-/build/
-/coverage/
+coverage/
 
-# Symbolication related
-app.*.symbols
+# Android / iOS Ephemeral & Build Files
+**/android/app/debug/
+**/android/app/profile/
+**/android/app/release/
+**/ios/Flutter/App.framework
+**/ios/Flutter/Flutter.framework
+**/ios/Flutter/Flutter.podspec
+**/ios/Runner/GeneratedPluginRegistrant.*
+**/linux/flutter/ephemeral/
+**/macos/flutter/ephemeral/
+**/windows/flutter/ephemeral/
 
-# Obfuscation related
-app.*.map.json
+# IDE & Editor Configurations
+.idea/
+**/.idea/
+*.iml
+**/*.iml
+*.ipr
+*.iws
+.vscode/
 
-# Android Studio will place build artifacts here
-/android/app/debug
-/android/app/profile
-/android/app/release
+# OS & System Files
+.DS_Store
+.DS_Store?
+._*
+.Spotlight-V100
+.Trashes
+ehthumbs.db
+Thumbs.db
+Desktop.ini
 
-# Environment variables – never commit real API keys
-.env
+# Logs & Temporary Files
+*.log
+*.tmp
+*.temp
+npm-debug.log*
+yarn-debug.log*
+yarn-error.log*

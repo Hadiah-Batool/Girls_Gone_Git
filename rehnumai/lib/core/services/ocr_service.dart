@@ -86,8 +86,9 @@ class OcrService {
     final textRecognizer = TextRecognizer(script: TextRecognitionScript.latin);
 
     try {
-      final RecognizedText recognizedText =
-          await textRecognizer.processImage(inputImage);
+      final RecognizedText recognizedText = await textRecognizer.processImage(
+        inputImage,
+      );
 
       final buffer = StringBuffer();
       for (final block in recognizedText.blocks) {

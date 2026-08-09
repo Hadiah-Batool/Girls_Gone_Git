@@ -46,11 +46,12 @@ class OpenRouterService {
   static const String _baseUrl =
       'https://openrouter.ai/api/v1/chat/completions';
 
-  // Default model – 100% free tier on OpenRouter (no paid credits required)
-  static const String defaultModel = 'google/gemini-2.5-flash:free';
+  // Default model – uses OPENROUTER_MODEL from .env if defined, else 'openrouter/free'
+  static String get defaultModel =>
+      dotenv.env['OPENROUTER_MODEL'] ?? 'openrouter/free';
 
-  // Fallback models if primary free model is overloaded or out of quota
-  static const String fallbackModel = 'meta-llama/llama-3.3-70b-instruct:free';
+  // Fallback model if primary model fails or is unavailable/overloaded
+  static String get fallbackModel => 'openrouter/free';
 
   // HTTP timeout per request
   static const Duration _timeout = Duration(seconds: 60);
@@ -69,15 +70,16 @@ class OpenRouterService {
 
   /// Sends a chat completion request to OpenRouter.
   Future<Map<String, dynamic>> chat({
-    String model = defaultModel,
+    String? model,
     required List<Map<String, dynamic>> messages,
     double temperature = 0.4,
     int maxTokens = 2048,
   }) async {
     final apiKey = _apiKey;
+    final modelToUse = model ?? defaultModel;
 
     final requestBody = jsonEncode({
-      'model': model,
+      'model': modelToUse,
       'messages': messages,
       'response_format': {'type': 'json_object'},
       'temperature': temperature,
@@ -100,7 +102,7 @@ class OpenRouterService {
           .timeout(
             _timeout,
             onTimeout: () => throw OpenRouterException(
-              message: 'Request timed out after ${_timeout.inSeconds}s (model: $model)',
+              message: 'Request timed out after ${_timeout.inSeconds}s (model: $modelToUse)',
             ),
           );
     } on OpenRouterException {
@@ -121,7 +123,7 @@ class OpenRouterService {
       }
       throw OpenRouterException(
         statusCode: response.statusCode,
-        message: detail ?? 'HTTP ${response.statusCode} from OpenRouter ($model)',
+        message: detail ?? 'HTTP ${response.statusCode} from OpenRouter ($modelToUse)',
         rawBody: response.body.length < 1000 ? response.body : null,
       );
     }
@@ -170,23 +172,24 @@ class OpenRouterService {
     }
   }
 
-  /// Attempts [chat] with free defaultModel; on 402/429/503 errors automatically
+  /// Attempts [chat] with defaultModel (or OPENROUTER_MODEL from .env); on any error
+  /// (e.g. 404 model removed, 402 no credits, 429 rate limit, 503 unavailable) automatically
   /// retries once with fallback free model.
   Future<Map<String, dynamic>> chatWithFallback({
     required List<Map<String, dynamic>> messages,
     double temperature = 0.4,
     int maxTokens = 2048,
   }) async {
+    final primaryModel = defaultModel;
     try {
       return await chat(
-        model: defaultModel,
+        model: primaryModel,
         messages: messages,
         temperature: temperature,
         maxTokens: maxTokens,
       );
-    } on OpenRouterException catch (e) {
-      if (e.statusCode == 402 || e.statusCode == 429 || e.statusCode == 503) {
-        // Fall back to secondary free model if primary free model is busy or requires credit
+    } on OpenRouterException catch (_) {
+      if (primaryModel != fallbackModel) {
         try {
           return await chat(
             model: fallbackModel,
