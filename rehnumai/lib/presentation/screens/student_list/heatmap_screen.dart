@@ -883,7 +883,7 @@ class _DrawerToggleItem extends StatelessWidget {
       ),
       value: value,
       onChanged: onChanged,
-      activeColor: AppColors.primary,
+      activeThumbColor: AppColors.primary,
       contentPadding: const EdgeInsets.symmetric(horizontal: 16),
     );
   }

@@ -56,9 +56,7 @@ class _ReasoningTrailScreenState extends State<ReasoningTrailScreen> {
       _currentStudent = widget.student;
     }
     if (widget.autoRun || widget.scannedText != null) {
-      if (_currentStudent == null) {
-        _currentStudent = mockStudents.first;
-      }
+      _currentStudent ??= mockStudents.first;
       _runLiveAnalysis();
     }
   }
