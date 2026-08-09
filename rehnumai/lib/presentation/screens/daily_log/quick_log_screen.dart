@@ -152,12 +152,34 @@ class _QuickLogScreenState extends State<QuickLogScreen> {
                   decoration: InputDecoration(
                     contentPadding: const EdgeInsets.symmetric(horizontal: 16, vertical: 14),
                     border: OutlineInputBorder(borderRadius: BorderRadius.circular(12)),
+                    enabledBorder: OutlineInputBorder(
+                      borderRadius: BorderRadius.circular(12),
+                      borderSide: const BorderSide(color: AppColors.outlineVariant),
+                    ),
+                    focusedBorder: OutlineInputBorder(
+                      borderRadius: BorderRadius.circular(12),
+                      borderSide: const BorderSide(color: AppColors.primary, width: 2),
+                    ),
                     filled: true,
-                    fillColor: Colors.white,
+                    fillColor: AppColors.surfaceContainerLowest,
                   ),
-                  hint: const Text('Choose a student...'),
+                  style: const TextStyle(color: AppColors.onSurface, fontSize: 15),
+                  dropdownColor: AppColors.surfaceContainerLowest,
+                  hint: const Text(
+                    'Choose a student...',
+                    style: TextStyle(color: AppColors.onSurfaceVariant, fontSize: 14),
+                  ),
                   items: students
-                      .map((s) => DropdownMenuItem(value: s.id, child: Text('${s.name} (${s.grade})')))
+                      .map((s) => DropdownMenuItem(
+                            value: s.id,
+                            child: Text(
+                              '${s.name} (${s.grade})',
+                              style: const TextStyle(
+                                color: AppColors.onSurface,
+                                fontSize: 14,
+                              ),
+                            ),
+                          ))
                       .toList(),
                   onChanged: (val) => setState(() => _selectedStudentId = val),
                 ),
@@ -191,12 +213,23 @@ class _QuickLogScreenState extends State<QuickLogScreen> {
                   TextFormField(
                     controller: _scoreController,
                     keyboardType: TextInputType.number,
+                    style: const TextStyle(color: AppColors.onSurface, fontSize: 15),
                     decoration: InputDecoration(
                       labelText: 'Exam Score (%)',
+                      labelStyle: const TextStyle(color: AppColors.onSurfaceVariant),
                       hintText: 'e.g. 68.5',
+                      hintStyle: const TextStyle(color: AppColors.onSurfaceVariant),
                       border: OutlineInputBorder(borderRadius: BorderRadius.circular(12)),
+                      enabledBorder: OutlineInputBorder(
+                        borderRadius: BorderRadius.circular(12),
+                        borderSide: const BorderSide(color: AppColors.outlineVariant),
+                      ),
+                      focusedBorder: OutlineInputBorder(
+                        borderRadius: BorderRadius.circular(12),
+                        borderSide: const BorderSide(color: AppColors.primary, width: 2),
+                      ),
                       filled: true,
-                      fillColor: Colors.white,
+                      fillColor: AppColors.surfaceContainerLowest,
                     ),
                   ),
                   const SizedBox(height: 16),
@@ -205,12 +238,23 @@ class _QuickLogScreenState extends State<QuickLogScreen> {
                 TextFormField(
                   controller: _noteController,
                   maxLines: 3,
+                  style: const TextStyle(color: AppColors.onSurface, fontSize: 15),
                   decoration: InputDecoration(
                     labelText: 'Teacher Soft Note / Reason',
+                    labelStyle: const TextStyle(color: AppColors.onSurfaceVariant),
                     hintText: 'e.g. Student reported headache; missed test...',
+                    hintStyle: const TextStyle(color: AppColors.onSurfaceVariant),
                     border: OutlineInputBorder(borderRadius: BorderRadius.circular(12)),
+                    enabledBorder: OutlineInputBorder(
+                      borderRadius: BorderRadius.circular(12),
+                      borderSide: const BorderSide(color: AppColors.outlineVariant),
+                    ),
+                    focusedBorder: OutlineInputBorder(
+                      borderRadius: BorderRadius.circular(12),
+                      borderSide: const BorderSide(color: AppColors.primary, width: 2),
+                    ),
                     filled: true,
-                    fillColor: Colors.white,
+                    fillColor: AppColors.surfaceContainerLowest,
                   ),
                 ),
                 const SizedBox(height: 24),

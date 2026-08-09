@@ -9,6 +9,7 @@ import '../../../data/models/student_model.dart';
 import '../../widgets/app_top_bar.dart';
 import '../scan_sheet/scan_sheet_screen.dart';
 import '../analysis/reasoning_trail_screen.dart';
+import '../profile/settings_screen.dart';
 
 // ─── Data model ─────────────────────────────────────────────────────────────
 
@@ -79,43 +80,7 @@ class _HeatmapScreenState extends State<HeatmapScreen> {
     return Scaffold(
       backgroundColor: AppColors.surfaceBright,
       appBar: const AppTopBar(),
-      drawer: Drawer(
-        backgroundColor: AppColors.surfaceBright,
-        child: ListView(
-          padding: EdgeInsets.zero,
-          children: [
-            DrawerHeader(
-              decoration: const BoxDecoration(color: AppColors.primary),
-              child: Text(
-                'Rehnumai Menu',
-                style: AppTextStyles.headlineMd.copyWith(color: AppColors.onPrimary),
-              ),
-            ),
-            ListTile(
-              leading: const Icon(Icons.delete_outline, color: Colors.red),
-              title: const Text('Clear All Dummy Data'),
-              onTap: () {
-                Navigator.pop(context);
-                appState.clearAllDummyData();
-                ScaffoldMessenger.of(context).showSnackBar(
-                  const SnackBar(content: Text('All dummy data cleared!')),
-                );
-              },
-            ),
-            ListTile(
-              leading: const Icon(Icons.restore, color: AppColors.primary),
-              title: const Text('Reset Sample Data'),
-              onTap: () {
-                Navigator.pop(context);
-                appState.resetDummyData();
-                ScaffoldMessenger.of(context).showSnackBar(
-                  const SnackBar(content: Text('Dataset reset to sample students!')),
-                );
-              },
-            ),
-          ],
-        ),
-      ),
+      drawer: _RehnumaiDrawer(appState: appState),
       floatingActionButton: FloatingActionButton.extended(
         onPressed: () {
           Navigator.of(context).push(
@@ -140,8 +105,10 @@ class _HeatmapScreenState extends State<HeatmapScreen> {
             ),
             const SizedBox(height: 24),
             TextField(
+              style: const TextStyle(color: AppColors.onSurface, fontSize: 15),
               decoration: InputDecoration(
                 hintText: 'Search student...',
+                hintStyle: const TextStyle(color: AppColors.onSurfaceVariant),
                 prefixIcon: const Icon(Icons.search, color: AppColors.onSurfaceVariant),
                 filled: true,
                 fillColor: AppColors.surfaceContainerLowest,
@@ -467,7 +434,7 @@ class _StudentCard extends StatelessWidget {
       },
       borderRadius: BorderRadius.circular(12),
       child: Container(
-        padding: const EdgeInsets.symmetric(horizontal: 16, vertical: 12),
+        padding: const EdgeInsets.symmetric(horizontal: 14, vertical: 12),
         decoration: BoxDecoration(
           color: AppColors.surfaceContainerLowest,
           borderRadius: BorderRadius.circular(12),
@@ -481,6 +448,7 @@ class _StudentCard extends StatelessWidget {
           ],
         ),
         child: Row(
+          crossAxisAlignment: CrossAxisAlignment.center,
           children: [
             CircleAvatar(
               radius: 20,
@@ -490,66 +458,578 @@ class _StudentCard extends StatelessWidget {
                 style: AppTextStyles.dataMono.copyWith(color: AppColors.onPrimaryFixed),
               ),
             ),
-            const SizedBox(width: 12),
+            const SizedBox(width: 10),
             Expanded(
               child: Column(
                 crossAxisAlignment: CrossAxisAlignment.start,
+                mainAxisSize: MainAxisSize.min,
                 children: [
                   Text(
                     student.name,
-                    style: AppTextStyles.bodyLg.copyWith(
+                    maxLines: 1,
+                    overflow: TextOverflow.ellipsis,
+                    style: AppTextStyles.bodyMd.copyWith(
                       fontWeight: FontWeight.w700,
                       color: AppColors.inkText,
                     ),
                   ),
-                  Text(
-                    'Risk: ${student.risk.name}',
-                    style: AppTextStyles.bodySm.copyWith(
-                      color: AppColors.onSurfaceVariant,
+                  const SizedBox(height: 2),
+                  _RiskBadge(risk: student.risk),
+                ],
+              ),
+            ),
+            const SizedBox(width: 8),
+            Column(
+              mainAxisSize: MainAxisSize.min,
+              crossAxisAlignment: CrossAxisAlignment.end,
+              children: [
+                SizedBox(
+                  height: 32,
+                  child: ElevatedButton.icon(
+                    onPressed: () {
+                      Navigator.of(context).push(
+                        MaterialPageRoute(
+                          builder: (_) => ReasoningTrailScreen(
+                            student: targetStudent,
+                            autoRun: true,
+                          ),
+                        ),
+                      );
+                    },
+                    icon: const Icon(Icons.auto_awesome, size: 13),
+                    label: const Text('Analyze'),
+                    style: ElevatedButton.styleFrom(
+                      backgroundColor: AppColors.primary,
+                      foregroundColor: AppColors.onPrimary,
+                      padding: const EdgeInsets.symmetric(horizontal: 10, vertical: 0),
+                      textStyle: const TextStyle(fontSize: 11, fontWeight: FontWeight.w700),
+                      shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(8)),
+                      elevation: 0,
                     ),
+                  ),
+                ),
+                const SizedBox(height: 4),
+                SizedBox(
+                  height: 28,
+                  child: OutlinedButton.icon(
+                    onPressed: onLog,
+                    icon: const Icon(Icons.edit_note, size: 13),
+                    label: const Text('Log'),
+                    style: OutlinedButton.styleFrom(
+                      foregroundColor: AppColors.inkText,
+                      side: const BorderSide(color: AppColors.outline),
+                      padding: const EdgeInsets.symmetric(horizontal: 10, vertical: 0),
+                      textStyle: const TextStyle(fontSize: 11, fontWeight: FontWeight.w700),
+                      shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(8)),
+                    ),
+                  ),
+                ),
+              ],
+            ),
+          ],
+        ),
+      ),
+    );
+  }
+}
+
+// ─── Risk Badge ──────────────────────────────────────────────────────────────
+
+class _RiskBadge extends StatelessWidget {
+  const _RiskBadge({required this.risk});
+  final RiskLevel risk;
+
+  Color get _color => switch (risk) {
+        RiskLevel.high => AppColors.riskHigh,
+        RiskLevel.medium => AppColors.riskMedium,
+        RiskLevel.stable => AppColors.riskStable,
+      };
+
+  String get _label => switch (risk) {
+        RiskLevel.high => 'At Risk',
+        RiskLevel.medium => 'Moderate',
+        RiskLevel.stable => 'Stable',
+      };
+
+  @override
+  Widget build(BuildContext context) {
+    return Container(
+      padding: const EdgeInsets.symmetric(horizontal: 6, vertical: 2),
+      decoration: BoxDecoration(
+        color: _color.withValues(alpha: 0.15),
+        borderRadius: BorderRadius.circular(4),
+      ),
+      child: Text(
+        _label,
+        style: TextStyle(
+          fontSize: 10,
+          fontWeight: FontWeight.w700,
+          color: _color,
+          letterSpacing: 0.3,
+        ),
+      ),
+    );
+  }
+}
+
+// ─── Rehnumai Drawer ─────────────────────────────────────────────────────────
+
+class _RehnumaiDrawer extends StatelessWidget {
+  const _RehnumaiDrawer({required this.appState});
+  final AppState appState;
+
+  @override
+  Widget build(BuildContext context) {
+    return Drawer(
+      backgroundColor: AppColors.surfaceBright,
+      child: SafeArea(
+        child: Column(
+          children: [
+            // ── Header ──────────────────────────────────────────────────
+            Container(
+              width: double.infinity,
+              padding: const EdgeInsets.fromLTRB(20, 24, 20, 20),
+              decoration: const BoxDecoration(
+                gradient: LinearGradient(
+                  colors: [AppColors.primary, Color(0xFFBF5246)],
+                  begin: Alignment.topLeft,
+                  end: Alignment.bottomRight,
+                ),
+              ),
+              child: Column(
+                crossAxisAlignment: CrossAxisAlignment.start,
+                children: [
+                  const Icon(Icons.school_rounded, color: Colors.white, size: 36),
+                  const SizedBox(height: 12),
+                  Text(
+                    'رہنمائی',
+                    style: AppTextStyles.headlineMd.copyWith(
+                      color: Colors.white,
+                      fontSize: 22,
+                    ),
+                  ),
+                  const SizedBox(height: 2),
+                  Text(
+                    appState.teacherName.isNotEmpty
+                        ? appState.teacherName
+                        : 'Teacher Menu',
+                    style: const TextStyle(
+                      color: Colors.white70,
+                      fontSize: 13,
+                      fontWeight: FontWeight.w500,
+                    ),
+                    maxLines: 1,
+                    overflow: TextOverflow.ellipsis,
                   ),
                 ],
               ),
             ),
-            const SizedBox(width: 6),
-            ElevatedButton.icon(
-              onPressed: () {
-                Navigator.of(context).push(
-                  MaterialPageRoute(
-                    builder: (_) => ReasoningTrailScreen(
-                      student: targetStudent,
-                      autoRun: true,
-                    ),
+
+            // ── Menu items ──────────────────────────────────────────────
+            Expanded(
+              child: ListView(
+                padding: const EdgeInsets.symmetric(vertical: 8),
+                children: [
+                  // Teacher Profile
+                  _DrawerItem(
+                    icon: Icons.person_rounded,
+                    iconColor: AppColors.primary,
+                    label: 'Edit Teacher Profile',
+                    subtitle: appState.teacherName.isNotEmpty
+                        ? appState.teacherName
+                        : 'Not set',
+                    onTap: () {
+                      Navigator.pop(context);
+                      _showEditProfileDialog(context, appState);
+                    },
                   ),
-                );
-              },
-              icon: const Icon(Icons.auto_awesome, size: 14),
-              label: const Text('Analyze'),
-              style: ElevatedButton.styleFrom(
-                backgroundColor: AppColors.primary,
-                foregroundColor: AppColors.onPrimary,
-                padding: const EdgeInsets.symmetric(horizontal: 10, vertical: 6),
-                textStyle: AppTextStyles.labelCaps,
-                shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(8)),
-                elevation: 0,
-              ),
-            ),
-            const SizedBox(width: 6),
-            OutlinedButton.icon(
-              onPressed: onLog,
-              icon: const Icon(Icons.edit_note, size: 16),
-              label: const Text('Log'),
-              style: OutlinedButton.styleFrom(
-                foregroundColor: AppColors.inkText,
-                side: const BorderSide(color: AppColors.outline),
-                padding: const EdgeInsets.symmetric(horizontal: 10, vertical: 6),
-                textStyle: AppTextStyles.labelCaps,
-                shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(8)),
+                  const Divider(height: 1, indent: 16, endIndent: 16),
+
+                  // Dark Mode Toggle
+                  _DrawerToggleItem(
+                    icon: appState.isDarkMode
+                        ? Icons.light_mode_rounded
+                        : Icons.dark_mode_rounded,
+                    iconColor: AppColors.secondary,
+                    label: 'Dark Mode',
+                    value: appState.isDarkMode,
+                    onChanged: (_) => appState.toggleTheme(),
+                  ),
+                  const Divider(height: 1, indent: 16, endIndent: 16),
+
+                  // Settings
+                  _DrawerItem(
+                    icon: Icons.settings_rounded,
+                    iconColor: AppColors.onSurfaceVariant,
+                    label: 'Settings',
+                    onTap: () {
+                      Navigator.pop(context);
+                      Navigator.of(context).push(
+                        MaterialPageRoute(
+                          builder: (_) => const SettingsScreen(),
+                        ),
+                      );
+                    },
+                  ),
+                  const Divider(height: 1, indent: 16, endIndent: 16),
+
+                  // Scan Sheet shortcut
+                  _DrawerItem(
+                    icon: Icons.document_scanner_rounded,
+                    iconColor: AppColors.tertiary,
+                    label: 'Scan Student Sheet',
+                    subtitle: 'Add students via camera',
+                    onTap: () {
+                      Navigator.pop(context);
+                      Navigator.of(context).push(
+                        MaterialPageRoute(
+                          builder: (_) => const ScanSheetScreen(),
+                        ),
+                      );
+                    },
+                  ),
+                  const Divider(height: 1, indent: 16, endIndent: 16),
+
+                  // Reset Sample Data
+                  _DrawerItem(
+                    icon: Icons.restore_rounded,
+                    iconColor: AppColors.primary,
+                    label: 'Reset Sample Data',
+                    subtitle: 'Load demo students',
+                    onTap: () {
+                      Navigator.pop(context);
+                      appState.resetDummyData();
+                      ScaffoldMessenger.of(context).showSnackBar(
+                        const SnackBar(
+                          content: Text('Dataset reset to sample students!'),
+                          behavior: SnackBarBehavior.floating,
+                        ),
+                      );
+                    },
+                  ),
+
+                  // Clear All Data
+                  _DrawerItem(
+                    icon: Icons.delete_outline_rounded,
+                    iconColor: Colors.red,
+                    label: 'Clear All Data',
+                    subtitle: 'Remove all student records',
+                    onTap: () {
+                      Navigator.pop(context);
+                      showDialog(
+                        context: context,
+                        builder: (ctx) => AlertDialog(
+                          title: const Text('Clear all data?'),
+                          content: const Text(
+                              'This will remove all student records. This cannot be undone.'),
+                          actions: [
+                            TextButton(
+                              onPressed: () => Navigator.pop(ctx),
+                              child: const Text('Cancel'),
+                            ),
+                            ElevatedButton(
+                              style: ElevatedButton.styleFrom(
+                                backgroundColor: Colors.red,
+                                foregroundColor: Colors.white,
+                              ),
+                              onPressed: () {
+                                Navigator.pop(ctx);
+                                appState.clearAllDummyData();
+                                ScaffoldMessenger.of(context).showSnackBar(
+                                  const SnackBar(
+                                    content: Text('All data cleared.'),
+                                    behavior: SnackBarBehavior.floating,
+                                  ),
+                                );
+                              },
+                              child: const Text('Clear'),
+                            ),
+                          ],
+                        ),
+                      );
+                    },
+                  ),
+                  const Divider(height: 1, indent: 16, endIndent: 16),
+
+                  // Help & About
+                  _DrawerItem(
+                    icon: Icons.info_outline_rounded,
+                    iconColor: AppColors.onSurfaceVariant,
+                    label: 'About Rehnumai',
+                    subtitle: 'v1.0.0 — AI risk analyzer',
+                    onTap: () {
+                      Navigator.pop(context);
+                      showAboutDialog(
+                        context: context,
+                        applicationName: 'Rehnumai',
+                        applicationVersion: '1.0.0',
+                        applicationIcon: const Icon(
+                          Icons.school,
+                          size: 48,
+                          color: AppColors.primary,
+                        ),
+                        children: [
+                          const Text(
+                            'AI-powered student risk analyzer for teachers. Identify at-risk students early and take timely action.',
+                          ),
+                        ],
+                      );
+                    },
+                  ),
+                ],
               ),
             ),
           ],
         ),
       ),
+    );
+  }
+
+  void _showEditProfileDialog(BuildContext context, AppState appState) {
+    showDialog(
+      context: context,
+      barrierDismissible: false,
+      builder: (ctx) => _EditProfileDialog(appState: appState),
+    );
+  }
+}
+
+// ─── Drawer Item Widgets ──────────────────────────────────────────────────────
+
+class _DrawerItem extends StatelessWidget {
+  const _DrawerItem({
+    required this.icon,
+    required this.iconColor,
+    required this.label,
+    this.subtitle,
+    required this.onTap,
+  });
+  final IconData icon;
+  final Color iconColor;
+  final String label;
+  final String? subtitle;
+  final VoidCallback onTap;
+
+  @override
+  Widget build(BuildContext context) {
+    return ListTile(
+      leading: Container(
+        width: 36,
+        height: 36,
+        decoration: BoxDecoration(
+          color: iconColor.withValues(alpha: 0.1),
+          borderRadius: BorderRadius.circular(8),
+        ),
+        child: Icon(icon, color: iconColor, size: 20),
+      ),
+      title: Text(
+        label,
+        style: const TextStyle(
+          fontSize: 14,
+          fontWeight: FontWeight.w600,
+          color: AppColors.inkText,
+        ),
+      ),
+      subtitle: subtitle != null
+          ? Text(
+              subtitle!,
+              style: const TextStyle(
+                fontSize: 12,
+                color: AppColors.onSurfaceVariant,
+              ),
+              maxLines: 1,
+              overflow: TextOverflow.ellipsis,
+            )
+          : null,
+      onTap: onTap,
+      contentPadding: const EdgeInsets.symmetric(horizontal: 16, vertical: 2),
+    );
+  }
+}
+
+class _DrawerToggleItem extends StatelessWidget {
+  const _DrawerToggleItem({
+    required this.icon,
+    required this.iconColor,
+    required this.label,
+    required this.value,
+    required this.onChanged,
+  });
+  final IconData icon;
+  final Color iconColor;
+  final String label;
+  final bool value;
+  final ValueChanged<bool> onChanged;
+
+  @override
+  Widget build(BuildContext context) {
+    return SwitchListTile(
+      secondary: Container(
+        width: 36,
+        height: 36,
+        decoration: BoxDecoration(
+          color: iconColor.withValues(alpha: 0.1),
+          borderRadius: BorderRadius.circular(8),
+        ),
+        child: Icon(icon, color: iconColor, size: 20),
+      ),
+      title: const Text(
+        'Dark Mode',
+        style: TextStyle(
+          fontSize: 14,
+          fontWeight: FontWeight.w600,
+          color: AppColors.inkText,
+        ),
+      ),
+      value: value,
+      onChanged: onChanged,
+      activeColor: AppColors.primary,
+      contentPadding: const EdgeInsets.symmetric(horizontal: 16),
+    );
+  }
+}
+
+// ─── Edit Profile Dialog ──────────────────────────────────────────────────────
+
+class _EditProfileDialog extends StatefulWidget {
+  const _EditProfileDialog({required this.appState});
+  final AppState appState;
+
+  @override
+  State<_EditProfileDialog> createState() => _EditProfileDialogState();
+}
+
+class _EditProfileDialogState extends State<_EditProfileDialog> {
+  final _formKey = GlobalKey<FormState>();
+  late final TextEditingController _nameCtrl;
+  late final TextEditingController _ageCtrl;
+  late final TextEditingController _educationCtrl;
+  late final TextEditingController _occupationCtrl;
+
+  @override
+  void initState() {
+    super.initState();
+    _nameCtrl = TextEditingController(text: widget.appState.teacherName);
+    _ageCtrl = TextEditingController(text: widget.appState.teacherAge);
+    _educationCtrl = TextEditingController(text: widget.appState.teacherEducation);
+    _occupationCtrl = TextEditingController(text: widget.appState.teacherOccupation);
+  }
+
+  @override
+  void dispose() {
+    _nameCtrl.dispose();
+    _ageCtrl.dispose();
+    _educationCtrl.dispose();
+    _occupationCtrl.dispose();
+    super.dispose();
+  }
+
+  @override
+  Widget build(BuildContext context) {
+    return AlertDialog(
+      backgroundColor: AppColors.surfaceBright,
+      title: Row(
+        children: [
+          const Icon(Icons.person_rounded, color: AppColors.primary),
+          const SizedBox(width: 8),
+          Text(
+            'Edit Teacher Profile',
+            style: AppTextStyles.headlineMd.copyWith(
+              fontSize: 18,
+              color: AppColors.primary,
+            ),
+          ),
+        ],
+      ),
+      content: SizedBox(
+        width: double.maxFinite,
+        child: Form(
+          key: _formKey,
+          child: SingleChildScrollView(
+            child: Column(
+              mainAxisSize: MainAxisSize.min,
+              children: [
+                _buildField(_nameCtrl, 'Name', Icons.badge_rounded),
+                const SizedBox(height: 12),
+                _buildField(_ageCtrl, 'Age', Icons.cake_rounded,
+                    keyboardType: TextInputType.number),
+                const SizedBox(height: 12),
+                _buildField(_educationCtrl, 'Education', Icons.school_rounded),
+                const SizedBox(height: 12),
+                _buildField(_occupationCtrl, 'Occupation / Subject',
+                    Icons.work_rounded),
+              ],
+            ),
+          ),
+        ),
+      ),
+      actions: [
+        TextButton(
+          onPressed: () => Navigator.pop(context),
+          child: const Text('Cancel'),
+        ),
+        ElevatedButton.icon(
+          icon: const Icon(Icons.save_rounded, size: 16),
+          label: const Text('Save'),
+          style: ElevatedButton.styleFrom(
+            backgroundColor: AppColors.primary,
+            foregroundColor: Colors.white,
+            shape: RoundedRectangleBorder(
+                borderRadius: BorderRadius.circular(8)),
+          ),
+          onPressed: () {
+            if (_formKey.currentState!.validate()) {
+              widget.appState.saveProfile(
+                name: _nameCtrl.text.trim(),
+                age: _ageCtrl.text.trim(),
+                education: _educationCtrl.text.trim(),
+                occupation: _occupationCtrl.text.trim(),
+              );
+              Navigator.pop(context);
+              ScaffoldMessenger.of(context).showSnackBar(
+                const SnackBar(
+                  content: Text('Profile updated!'),
+                  behavior: SnackBarBehavior.floating,
+                ),
+              );
+            }
+          },
+        ),
+      ],
+    );
+  }
+
+  Widget _buildField(
+    TextEditingController ctrl,
+    String label,
+    IconData icon, {
+    TextInputType keyboardType = TextInputType.text,
+  }) {
+    return TextFormField(
+      controller: ctrl,
+      keyboardType: keyboardType,
+      style: const TextStyle(color: AppColors.onSurface, fontSize: 15),
+      decoration: InputDecoration(
+        labelText: label,
+        labelStyle: const TextStyle(color: AppColors.onSurfaceVariant),
+        prefixIcon: Icon(icon, color: AppColors.primary, size: 20),
+        filled: true,
+        fillColor: AppColors.surfaceContainerLowest,
+        border: OutlineInputBorder(
+          borderRadius: BorderRadius.circular(8),
+          borderSide: const BorderSide(color: AppColors.outlineVariant),
+        ),
+        enabledBorder: OutlineInputBorder(
+          borderRadius: BorderRadius.circular(8),
+          borderSide: const BorderSide(color: AppColors.outlineVariant),
+        ),
+        focusedBorder: OutlineInputBorder(
+          borderRadius: BorderRadius.circular(8),
+          borderSide: const BorderSide(color: AppColors.primary, width: 2),
+        ),
+        contentPadding: const EdgeInsets.symmetric(horizontal: 12, vertical: 12),
+      ),
+      validator: (v) => v == null || v.isEmpty ? 'Required' : null,
     );
   }
 }

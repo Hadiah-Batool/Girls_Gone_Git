@@ -1,6 +1,9 @@
 import 'package:flutter/material.dart';
+import 'package:provider/provider.dart';
+import '../../../core/app_state.dart';
 import '../../../core/constants/app_colors.dart';
 import '../../../core/constants/app_theme.dart';
+import '../../../data/models/student_model.dart';
 import '../../widgets/app_top_bar.dart';
 
 class InterventionScreen extends StatefulWidget {
@@ -13,6 +16,7 @@ class InterventionScreen extends StatefulWidget {
 class _InterventionScreenState extends State<InterventionScreen> {
   final TextEditingController _gutCheckController = TextEditingController();
   bool _messageSent = false;
+  Student? _selectedStudent;
 
   @override
   void dispose() {
@@ -22,6 +26,19 @@ class _InterventionScreenState extends State<InterventionScreen> {
 
   @override
   Widget build(BuildContext context) {
+    final appState = Provider.of<AppState>(context);
+    final students = appState.students;
+
+    // Auto-select first student if available and none selected
+    if (_selectedStudent == null && students.isNotEmpty) {
+      _selectedStudent = students.first;
+    }
+    // If selected student was removed, reset
+    if (_selectedStudent != null &&
+        !students.any((s) => s.id == _selectedStudent!.id)) {
+      _selectedStudent = students.isNotEmpty ? students.first : null;
+    }
+
     return Scaffold(
       backgroundColor: AppColors.surfaceBright,
       appBar: const AppTopBar(),
@@ -30,45 +47,168 @@ class _InterventionScreenState extends State<InterventionScreen> {
         child: Column(
           crossAxisAlignment: CrossAxisAlignment.start,
           children: [
-            // ── Context header
-            _ContextHeader(),
-            const SizedBox(height: 20),
-
-            // ── AI Diagnosis Banner
-            _DiagnosisBanner(),
-            const SizedBox(height: 20),
-
-            // ── Draft parent message card
-            _ParentMessageCard(
-              isSent: _messageSent,
-              onSend: () => setState(() => _messageSent = true),
+            // ── Student Selector ─────────────────────────────────────────
+            _StudentSelectorCard(
+              students: students,
+              selectedStudent: _selectedStudent,
+              onChanged: (student) => setState(() => _selectedStudent = student),
             ),
-            const SizedBox(height: 12),
+            const SizedBox(height: 16),
 
-            // ── Escalate
-            _ActionListTile(
-              icon: Icons.supervisor_account,
-              iconBg: AppColors.secondaryContainer,
-              iconColor: AppColors.onSecondaryContainer,
-              title: 'Escalate to Counselor',
-              subtitle: 'Request a formal financial review',
-            ),
-            const SizedBox(height: 12),
+            if (students.isEmpty)
+              _EmptyState()
+            else ...[
+              // ── Context header
+              _ContextHeader(student: _selectedStudent),
+              const SizedBox(height: 20),
 
-            // ── Home visit
-            _ActionListTile(
-              icon: Icons.home_work,
-              iconBg: AppColors.surfaceContainerHigh,
-              iconColor: AppColors.onSurfaceVariant,
-              title: 'Schedule Home Visit',
-              subtitle: 'Check-in personally with the family',
-            ),
-            const SizedBox(height: 24),
+              // ── AI Diagnosis Banner
+              _DiagnosisBanner(student: _selectedStudent),
+              const SizedBox(height: 20),
 
-            // ── Gut-check
-            _GutCheckCard(controller: _gutCheckController),
+              // ── Draft parent message card
+              _ParentMessageCard(
+                student: _selectedStudent,
+                isSent: _messageSent,
+                onSend: () => setState(() => _messageSent = true),
+                onStudentChanged: () => setState(() => _messageSent = false),
+              ),
+              const SizedBox(height: 12),
+
+              // ── Escalate
+              _ActionListTile(
+                icon: Icons.supervisor_account,
+                iconBg: AppColors.secondaryContainer,
+                iconColor: AppColors.onSecondaryContainer,
+                title: 'Escalate to Counselor',
+                subtitle: 'Request a formal financial review',
+              ),
+              const SizedBox(height: 12),
+
+              // ── Home visit
+              _ActionListTile(
+                icon: Icons.home_work,
+                iconBg: AppColors.surfaceContainerHigh,
+                iconColor: AppColors.onSurfaceVariant,
+                title: 'Schedule Home Visit',
+                subtitle: 'Check-in personally with the family',
+              ),
+              const SizedBox(height: 24),
+
+              // ── Gut-check
+              _GutCheckCard(controller: _gutCheckController),
+            ],
           ],
         ),
+      ),
+    );
+  }
+}
+
+// ─── Empty State ──────────────────────────────────────────────────────────────
+
+class _EmptyState extends StatelessWidget {
+  @override
+  Widget build(BuildContext context) {
+    final appState = Provider.of<AppState>(context, listen: false);
+    return Center(
+      child: Padding(
+        padding: const EdgeInsets.symmetric(vertical: 48),
+        child: Column(
+          mainAxisSize: MainAxisSize.min,
+          children: [
+            const Icon(Icons.inbox_outlined, size: 56, color: AppColors.textLight),
+            const SizedBox(height: 16),
+            Text(
+              'No students found.',
+              style: AppTextStyles.headlineMd.copyWith(fontSize: 16, color: AppColors.inkText),
+            ),
+            const SizedBox(height: 6),
+            const Text(
+              'Scan a sheet or reset sample data first.',
+              style: TextStyle(color: AppColors.onSurfaceVariant, fontSize: 13),
+            ),
+            const SizedBox(height: 16),
+            ElevatedButton.icon(
+              onPressed: () => appState.resetDummyData(),
+              icon: const Icon(Icons.restore, size: 18),
+              label: const Text('Load Sample Students'),
+              style: ElevatedButton.styleFrom(
+                backgroundColor: AppColors.primary,
+                foregroundColor: Colors.white,
+                shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(10)),
+              ),
+            ),
+          ],
+        ),
+      ),
+    );
+  }
+}
+
+// ─── Student Selector Card ────────────────────────────────────────────────────
+
+class _StudentSelectorCard extends StatelessWidget {
+  const _StudentSelectorCard({
+    required this.students,
+    required this.selectedStudent,
+    required this.onChanged,
+  });
+  final List<Student> students;
+  final Student? selectedStudent;
+  final ValueChanged<Student?> onChanged;
+
+  @override
+  Widget build(BuildContext context) {
+    return Container(
+      padding: const EdgeInsets.all(14),
+      decoration: BoxDecoration(
+        color: AppColors.surfaceContainerLowest,
+        borderRadius: BorderRadius.circular(12),
+        border: Border.all(color: AppColors.outlineVariant.withValues(alpha: 0.6)),
+      ),
+      child: Row(
+        children: [
+          const Icon(Icons.person_search_rounded, color: AppColors.primary, size: 22),
+          const SizedBox(width: 12),
+          Expanded(
+            child: students.isEmpty
+                ? const Text(
+                    'No students — scan a sheet first',
+                    style: TextStyle(
+                      color: AppColors.onSurfaceVariant,
+                      fontSize: 14,
+                    ),
+                  )
+                : DropdownButton<Student>(
+                    value: selectedStudent,
+                    isExpanded: true,
+                    underline: const SizedBox.shrink(),
+                    style: const TextStyle(
+                      color: AppColors.onSurface,
+                      fontSize: 14,
+                      fontWeight: FontWeight.w600,
+                    ),
+                    dropdownColor: AppColors.surfaceContainerLowest,
+                    items: students
+                        .map(
+                          (s) => DropdownMenuItem<Student>(
+                            value: s,
+                            child: Text(
+                              '${s.name} · ${s.grade}',
+                              overflow: TextOverflow.ellipsis,
+                              style: const TextStyle(
+                                color: AppColors.onSurface,
+                                fontSize: 14,
+                              ),
+                            ),
+                          ),
+                        )
+                        .toList(),
+                    onChanged: onChanged,
+                  ),
+          ),
+        ],
       ),
     );
   }
@@ -77,8 +217,14 @@ class _InterventionScreenState extends State<InterventionScreen> {
 // ─── Context Header ───────────────────────────────────────────────────────────
 
 class _ContextHeader extends StatelessWidget {
+  const _ContextHeader({required this.student});
+  final Student? student;
+
   @override
   Widget build(BuildContext context) {
+    final name = student?.name ?? 'Student';
+    final grade = student?.grade ?? '';
+
     return Column(
       crossAxisAlignment: CrossAxisAlignment.start,
       children: [
@@ -95,13 +241,13 @@ class _ContextHeader extends StatelessWidget {
             children: [
               const TextSpan(text: 'Recommended actions for '),
               TextSpan(
-                text: 'Ali Khan',
+                text: name,
                 style: AppTextStyles.bodyMd.copyWith(
                   fontWeight: FontWeight.w700,
                   color: AppColors.primary,
                 ),
               ),
-              const TextSpan(text: ' (Grade 8)'),
+              if (grade.isNotEmpty) TextSpan(text: ' ($grade)'),
             ],
           ),
         ),
@@ -110,9 +256,30 @@ class _ContextHeader extends StatelessWidget {
   }
 }
 
-// ─── AI Diagnosis Banner ─────────────────────────────────────────────────────
+// ─── AI Diagnosis Banner ──────────────────────────────────────────────────────
 
 class _DiagnosisBanner extends StatelessWidget {
+  const _DiagnosisBanner({required this.student});
+  final Student? student;
+
+  String _getDiagnosis(Student? s) {
+    if (s == null) return 'No student selected.';
+    if (s.hasFeeOverdue && s.attendanceRate < 70) {
+      return 'Pattern of absences coinciding with fee overdue. High probability of financial strain.';
+    } else if (s.hasFeeOverdue) {
+      return 'Fee payments are overdue. Risk of dropout due to financial difficulty.';
+    } else if (s.attendanceRate < 60) {
+      return 'Critically low attendance rate (${s.attendanceRate.toStringAsFixed(0)}%). Immediate action required.';
+    } else if (s.attendanceRate < 80) {
+      return 'Below-average attendance (${s.attendanceRate.toStringAsFixed(0)}%). Monitor closely and follow up.';
+    } else if (s.latestScore != null && s.latestScore! < 50) {
+      return 'Latest exam score critically low (${s.latestScore!.toStringAsFixed(0)}%). May need academic support.';
+    } else if (s.latestScore != null && s.latestScore! < 65) {
+      return 'Below average exam performance (${s.latestScore!.toStringAsFixed(0)}%). Consider extra support sessions.';
+    }
+    return 'No major risk indicators detected. Continue regular monitoring.';
+  }
+
   @override
   Widget build(BuildContext context) {
     return Container(
@@ -120,14 +287,14 @@ class _DiagnosisBanner extends StatelessWidget {
       decoration: BoxDecoration(
         color: AppColors.inverseOnSurface,
         borderRadius: BorderRadius.circular(8),
-        border: Border(
+        border: const Border(
           left: BorderSide(color: AppColors.riskMedium, width: 4),
         ),
       ),
       child: Row(
         crossAxisAlignment: CrossAxisAlignment.start,
         children: [
-          Icon(Icons.lightbulb, color: AppColors.secondary, size: 20),
+          const Icon(Icons.lightbulb, color: AppColors.secondary, size: 20),
           const SizedBox(width: 12),
           Expanded(
             child: Column(
@@ -140,25 +307,11 @@ class _DiagnosisBanner extends StatelessWidget {
                   ),
                 ),
                 const SizedBox(height: 4),
-                RichText(
-                  text: TextSpan(
-                    style: AppTextStyles.bodySm.copyWith(
-                      color: AppColors.onSurfaceVariant,
-                    ),
-                    children: [
-                      const TextSpan(
-                        text:
-                            'Pattern of 3 consecutive absences coinciding with fee collection week. High probability of ',
-                      ),
-                      TextSpan(
-                        text: 'financial strain',
-                        style: AppTextStyles.bodySm.copyWith(
-                          fontWeight: FontWeight.w700,
-                          color: AppColors.inkText,
-                        ),
-                      ),
-                      const TextSpan(text: '.'),
-                    ],
+                Text(
+                  _getDiagnosis(student),
+                  style: AppTextStyles.bodySm.copyWith(
+                    color: AppColors.onSurfaceVariant,
+                    height: 1.5,
                   ),
                 ),
               ],
@@ -173,9 +326,16 @@ class _DiagnosisBanner extends StatelessWidget {
 // ─── Parent Message Card ──────────────────────────────────────────────────────
 
 class _ParentMessageCard extends StatefulWidget {
-  const _ParentMessageCard({required this.isSent, required this.onSend});
+  const _ParentMessageCard({
+    required this.student,
+    required this.isSent,
+    required this.onSend,
+    required this.onStudentChanged,
+  });
+  final Student? student;
   final bool isSent;
   final VoidCallback onSend;
+  final VoidCallback onStudentChanged;
 
   @override
   State<_ParentMessageCard> createState() => _ParentMessageCardState();
@@ -183,10 +343,27 @@ class _ParentMessageCard extends StatefulWidget {
 
 class _ParentMessageCardState extends State<_ParentMessageCard> {
   bool _isEditing = false;
-  final _editController = TextEditingController(
-    text:
-        'Assalam-o-Alaikum, this is Ustaad Ahmad. I noticed Ali has missed a few days this week. We value his presence in class greatly. If there is any difficulty regarding the recent fee schedule, please know the school is here to support you. Let\'s talk.',
-  );
+  late TextEditingController _editController;
+
+  String _buildMessage(Student? s) {
+    final name = s?.name ?? 'the student';
+    return 'Assalam-o-Alaikum, I am $name\'s class teacher. I noticed $name has missed a few sessions recently. We value their presence and want to support them. If there\'s any difficulty — academic or otherwise — please know the school is here to help. Let\'s connect soon.';
+  }
+
+  @override
+  void initState() {
+    super.initState();
+    _editController = TextEditingController(text: _buildMessage(widget.student));
+  }
+
+  @override
+  void didUpdateWidget(_ParentMessageCard oldWidget) {
+    super.didUpdateWidget(oldWidget);
+    if (oldWidget.student?.id != widget.student?.id) {
+      _editController.text = _buildMessage(widget.student);
+      widget.onStudentChanged();
+    }
+  }
 
   @override
   void dispose() {
@@ -226,11 +403,7 @@ class _ParentMessageCardState extends State<_ParentMessageCard> {
                 // Title row
                 Row(
                   children: [
-                    Icon(
-                      Icons.chat_bubble_outline,
-                      color: AppColors.primary,
-                      size: 20,
-                    ),
+                    const Icon(Icons.chat_bubble_outline, color: AppColors.primary, size: 20),
                     const SizedBox(width: 8),
                     Expanded(
                       child: Text(
@@ -242,10 +415,7 @@ class _ParentMessageCardState extends State<_ParentMessageCard> {
                       ),
                     ),
                     Container(
-                      padding: const EdgeInsets.symmetric(
-                        horizontal: 10,
-                        vertical: 4,
-                      ),
+                      padding: const EdgeInsets.symmetric(horizontal: 10, vertical: 4),
                       decoration: BoxDecoration(
                         color: AppColors.primaryContainer.withValues(alpha: 0.2),
                         borderRadius: BorderRadius.circular(999),
@@ -288,7 +458,7 @@ class _ParentMessageCardState extends State<_ParentMessageCard> {
                           controller: _editController,
                           maxLines: 5,
                           style: AppTextStyles.bodySm.copyWith(
-                            color: AppColors.onSurfaceVariant,
+                            color: AppColors.onSurface,
                           ),
                           decoration: const InputDecoration(
                             border: InputBorder.none,
@@ -298,7 +468,7 @@ class _ParentMessageCardState extends State<_ParentMessageCard> {
                         )
                       : Text(
                           widget.isSent
-                              ? '✅ Message sent to Ali\'s parent'
+                              ? '✅ Message sent to ${widget.student?.name ?? 'student'}\'s parent'
                               : _editController.text,
                           style: AppTextStyles.bodySm.copyWith(
                             color: widget.isSent
@@ -337,10 +507,7 @@ class _ParentMessageCardState extends State<_ParentMessageCard> {
                           elevation: 0,
                           shape: const StadiumBorder(),
                           textStyle: AppTextStyles.labelCaps,
-                          padding: const EdgeInsets.symmetric(
-                            horizontal: 16,
-                            vertical: 10,
-                          ),
+                          padding: const EdgeInsets.symmetric(horizontal: 16, vertical: 10),
                         ),
                       ),
                     ] else
@@ -461,7 +628,7 @@ class _GutCheckCard extends StatelessWidget {
         children: [
           Row(
             children: [
-              Icon(Icons.psychology, color: AppColors.secondary, size: 20),
+              const Icon(Icons.psychology, color: AppColors.secondary, size: 20),
               const SizedBox(width: 8),
               Text(
                 "Ustaad's Gut-Check",
@@ -484,8 +651,10 @@ class _GutCheckCard extends StatelessWidget {
           TextField(
             controller: controller,
             maxLines: 4,
+            style: AppTextStyles.bodyMd.copyWith(color: AppColors.inkText),
             decoration: InputDecoration(
-              hintText: 'e.g., Ali mentioned his father was unwell last week...',
+              hintText: 'e.g., Student mentioned their parent was unwell...',
+              hintStyle: const TextStyle(color: AppColors.onSurfaceVariant),
               filled: true,
               fillColor: AppColors.surfaceBright,
               border: OutlineInputBorder(
@@ -505,22 +674,28 @@ class _GutCheckCard extends StatelessWidget {
                 borderSide: const BorderSide(color: AppColors.primary),
               ),
             ),
-            style: AppTextStyles.bodyMd.copyWith(color: AppColors.inkText),
           ),
           const SizedBox(height: 12),
           Align(
             alignment: Alignment.centerRight,
             child: ElevatedButton(
-              onPressed: () {},
+              onPressed: () {
+                if (controller.text.trim().isNotEmpty) {
+                  ScaffoldMessenger.of(context).showSnackBar(
+                    const SnackBar(
+                      content: Text('Observation saved!'),
+                      behavior: SnackBarBehavior.floating,
+                    ),
+                  );
+                  controller.clear();
+                }
+              },
               style: ElevatedButton.styleFrom(
                 backgroundColor: AppColors.surfaceContainerHigh,
                 foregroundColor: AppColors.onSurface,
                 elevation: 0,
                 shape: const StadiumBorder(),
-                padding: const EdgeInsets.symmetric(
-                  horizontal: 20,
-                  vertical: 10,
-                ),
+                padding: const EdgeInsets.symmetric(horizontal: 20, vertical: 10),
                 textStyle: AppTextStyles.labelCaps,
               ),
               child: const Text('Save Note'),
@@ -531,4 +706,3 @@ class _GutCheckCard extends StatelessWidget {
     );
   }
 }
-

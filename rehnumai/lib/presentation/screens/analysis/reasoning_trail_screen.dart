@@ -6,7 +6,9 @@
 
 import 'package:flutter/material.dart';
 import 'package:flutter/services.dart';
+import 'package:provider/provider.dart';
 import 'package:share_plus/share_plus.dart';
+import '../../../core/app_state.dart';
 import '../../../core/constants/app_colors.dart';
 import '../../../core/constants/app_theme.dart';
 import '../../../core/services/gemini_service.dart';
@@ -48,8 +50,15 @@ class _ReasoningTrailScreenState extends State<ReasoningTrailScreen> {
   @override
   void initState() {
     super.initState();
-    _currentStudent = widget.student ?? mockStudents.first;
+    // If a specific student was passed, use it directly.
+    // Otherwise, leave _currentStudent null — the user will pick from the list.
+    if (widget.student != null) {
+      _currentStudent = widget.student;
+    }
     if (widget.autoRun || widget.scannedText != null) {
+      if (_currentStudent == null) {
+        _currentStudent = mockStudents.first;
+      }
       _runLiveAnalysis();
     }
   }
@@ -454,6 +463,20 @@ You are a data extraction specialist. Extract structured student data from raw O
               child: Column(
                 crossAxisAlignment: CrossAxisAlignment.start,
                 children: [
+                  // ── Student Picker (shown when opened as a tab without a pre-set student)
+                  if (widget.student == null && widget.scannedText == null)
+                    _StudentPickerForAnalysis(
+                      selectedStudent: _currentStudent,
+                      onChanged: (s) {
+                        setState(() {
+                          _currentStudent = s;
+                          _events.clear();
+                          _isComplete = false;
+                          _finalSummary = null;
+                          _errorMessage = null;
+                        });
+                      },
+                    ),
                   if (_currentStudent != null) ...[
                     _StudentHeaderCard(
                       student: _currentStudent!,
@@ -876,6 +899,107 @@ class _TeacherOverrideCard extends StatelessWidget {
           ],
         ],
       ),
+    );
+  }
+}
+
+// ─── Student Picker for Standalone View Tab ───────────────────────────────────
+
+class _StudentPickerForAnalysis extends StatelessWidget {
+  const _StudentPickerForAnalysis({
+    required this.selectedStudent,
+    required this.onChanged,
+  });
+  final Student? selectedStudent;
+  final ValueChanged<Student?> onChanged;
+
+  @override
+  Widget build(BuildContext context) {
+    final appState = context.watch<AppState>();
+    final students = appState.students;
+
+    return Column(
+      crossAxisAlignment: CrossAxisAlignment.start,
+      children: [
+        const Padding(
+          padding: EdgeInsets.only(bottom: 8),
+          child: Text(
+            'Select a Student to Analyze',
+            style: TextStyle(
+              fontSize: 16,
+              fontWeight: FontWeight.w700,
+              color: AppColors.inkText,
+            ),
+          ),
+        ),
+        Container(
+          padding: const EdgeInsets.symmetric(horizontal: 14, vertical: 4),
+          decoration: BoxDecoration(
+            color: AppColors.surfaceContainerLowest,
+            borderRadius: BorderRadius.circular(12),
+            border: Border.all(color: AppColors.outlineVariant),
+          ),
+          child: students.isEmpty
+              ? Column(
+                  crossAxisAlignment: CrossAxisAlignment.start,
+                  children: [
+                    const Padding(
+                      padding: EdgeInsets.symmetric(vertical: 12),
+                      child: Text(
+                        'No students available. Scan a sheet or reset sample data.',
+                        style: TextStyle(
+                          color: AppColors.onSurfaceVariant,
+                          fontSize: 13,
+                        ),
+                      ),
+                    ),
+                    ElevatedButton.icon(
+                      onPressed: () => appState.resetDummyData(),
+                      icon: const Icon(Icons.restore, size: 16),
+                      label: const Text('Load Sample Students'),
+                      style: ElevatedButton.styleFrom(
+                        backgroundColor: AppColors.primary,
+                        foregroundColor: Colors.white,
+                        shape: RoundedRectangleBorder(
+                            borderRadius: BorderRadius.circular(8)),
+                      ),
+                    ),
+                    const SizedBox(height: 8),
+                  ],
+                )
+              : DropdownButton<Student>(
+                  value: selectedStudent != null &&
+                          students.any((s) => s.id == selectedStudent!.id)
+                      ? selectedStudent
+                      : students.first,
+                  isExpanded: true,
+                  underline: const SizedBox.shrink(),
+                  dropdownColor: AppColors.surfaceContainerLowest,
+                  style: const TextStyle(
+                    color: AppColors.onSurface,
+                    fontSize: 14,
+                    fontWeight: FontWeight.w600,
+                  ),
+                  items: students
+                      .map(
+                        (s) => DropdownMenuItem<Student>(
+                          value: s,
+                          child: Text(
+                            '${s.name} · ${s.grade}',
+                            overflow: TextOverflow.ellipsis,
+                            style: const TextStyle(
+                              color: AppColors.onSurface,
+                              fontSize: 14,
+                            ),
+                          ),
+                        ),
+                      )
+                      .toList(),
+                  onChanged: onChanged,
+                ),
+        ),
+        const SizedBox(height: 16),
+      ],
     );
   }
 }
