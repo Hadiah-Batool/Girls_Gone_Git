@@ -9,6 +9,7 @@ class AppTheme {
   static ThemeData get lightTheme {
     final base = ThemeData(
       useMaterial3: true,
+      brightness: Brightness.light,
       colorScheme: const ColorScheme(
         brightness: Brightness.light,
         primary: AppColors.primary,
@@ -27,7 +28,7 @@ class AppTheme {
         onError: AppColors.onError,
         errorContainer: AppColors.errorContainer,
         onErrorContainer: AppColors.onErrorContainer,
-        surface: AppColors.surface,
+        surface: AppColors.surfaceBright,
         onSurface: AppColors.onSurface,
         onSurfaceVariant: AppColors.onSurfaceVariant,
         outline: AppColors.outline,
@@ -45,6 +46,7 @@ class AppTheme {
 
     return base.copyWith(
       scaffoldBackgroundColor: AppColors.surfaceBright,
+      cardColor: AppColors.surfaceContainerLowest,
       textTheme: AppTextStyles.textTheme,
       appBarTheme: AppBarTheme(
         backgroundColor: AppColors.surfaceBright,
@@ -120,6 +122,125 @@ class AppTheme {
         ),
         hintStyle: AppTextStyles.bodySm.copyWith(
           color: AppColors.onSurfaceVariant.withValues(alpha: 0.7),
+        ),
+      ),
+    );
+  }
+
+  static ThemeData get darkTheme {
+    final base = ThemeData(
+      useMaterial3: true,
+      brightness: Brightness.dark,
+      colorScheme: const ColorScheme(
+        brightness: Brightness.dark,
+        primary: Color(0xFFF26D5B),
+        onPrimary: Colors.white,
+        primaryContainer: Color(0xFF871F15),
+        onPrimaryContainer: Colors.white,
+        secondary: Color(0xFFE3C36D),
+        onSecondary: Colors.black,
+        secondaryContainer: Color(0xFF584400),
+        onSecondaryContainer: Colors.white,
+        tertiary: Color(0xFF84A98C),
+        onTertiary: Colors.black,
+        tertiaryContainer: Color(0xFF2C4E36),
+        onTertiaryContainer: Colors.white,
+        error: Color(0xFFFFB4AB),
+        onError: Color(0xFF690005),
+        errorContainer: Color(0xFF93000A),
+        onErrorContainer: Colors.white,
+        surface: AppColors.darkSurfaceBright,
+        onSurface: AppColors.darkInkText,
+        onSurfaceVariant: AppColors.darkOnSurfaceVariant,
+        outline: AppColors.outline,
+        outlineVariant: AppColors.darkOutlineVariant,
+        inverseSurface: AppColors.surfaceBright,
+        onInverseSurface: AppColors.onSurface,
+        inversePrimary: AppColors.primary,
+        surfaceContainerLowest: AppColors.darkSurfaceContainerLowest,
+        surfaceContainerLow: AppColors.darkSurfaceContainerLow,
+        surfaceContainer: AppColors.darkSurfaceContainerLow,
+        surfaceContainerHigh: Color(0xFF382F28),
+        surfaceContainerHighest: Color(0xFF42372F),
+      ),
+    );
+
+    return base.copyWith(
+      scaffoldBackgroundColor: AppColors.darkSurfaceBright,
+      cardColor: AppColors.darkSurfaceContainerLowest,
+      textTheme: AppTextStyles.darkTextTheme,
+      appBarTheme: AppBarTheme(
+        backgroundColor: AppColors.darkSurfaceBright,
+        surfaceTintColor: Colors.transparent,
+        elevation: 0,
+        centerTitle: true,
+        titleTextStyle: AppTextStyles.headlineLgMobile.copyWith(
+          color: const Color(0xFFF26D5B),
+        ),
+        iconTheme: const IconThemeData(color: Color(0xFFF26D5B)),
+      ),
+      navigationBarTheme: NavigationBarThemeData(
+        backgroundColor: AppColors.darkSurfaceContainerLowest,
+        indicatorColor: const Color(0xFF382F28),
+        labelTextStyle: WidgetStateProperty.all(
+          AppTextStyles.labelCaps.copyWith(color: AppColors.darkInkText),
+        ),
+        iconTheme: WidgetStateProperty.resolveWith((states) {
+          if (states.contains(WidgetState.selected)) {
+            return const IconThemeData(color: Color(0xFFF26D5B));
+          }
+          return const IconThemeData(color: AppColors.darkOnSurfaceVariant);
+        }),
+        elevation: 0,
+        surfaceTintColor: Colors.transparent,
+        labelBehavior: NavigationDestinationLabelBehavior.alwaysShow,
+      ),
+      dialogTheme: DialogThemeData(
+        backgroundColor: AppColors.darkSurfaceContainerLowest,
+        titleTextStyle: AppTextStyles.headlineMd.copyWith(color: AppColors.darkInkText),
+        contentTextStyle: AppTextStyles.bodyMd.copyWith(color: AppColors.darkInkText),
+      ),
+      cardTheme: CardThemeData(
+        color: AppColors.darkSurfaceContainerLowest,
+        elevation: 0,
+        shape: RoundedRectangleBorder(
+          borderRadius: BorderRadius.circular(12),
+          side: const BorderSide(color: AppColors.darkOutlineVariant),
+        ),
+      ),
+      elevatedButtonTheme: ElevatedButtonThemeData(
+        style: ElevatedButton.styleFrom(
+          backgroundColor: const Color(0xFFF26D5B),
+          foregroundColor: Colors.white,
+          elevation: 0,
+          shape: const StadiumBorder(),
+          textStyle: AppTextStyles.labelCaps,
+        ),
+      ),
+      inputDecorationTheme: InputDecorationTheme(
+        filled: true,
+        fillColor: AppColors.darkSurfaceContainerLowest,
+        labelStyle: AppTextStyles.bodySm.copyWith(
+          color: AppColors.darkOnSurfaceVariant,
+        ),
+        floatingLabelStyle: AppTextStyles.bodySm.copyWith(
+          color: const Color(0xFFF26D5B),
+          fontWeight: FontWeight.bold,
+        ),
+        border: OutlineInputBorder(
+          borderRadius: BorderRadius.circular(8),
+          borderSide: const BorderSide(color: AppColors.darkOutlineVariant),
+        ),
+        enabledBorder: OutlineInputBorder(
+          borderRadius: BorderRadius.circular(8),
+          borderSide: const BorderSide(color: AppColors.darkOutlineVariant),
+        ),
+        focusedBorder: OutlineInputBorder(
+          borderRadius: BorderRadius.circular(8),
+          borderSide: const BorderSide(color: Color(0xFFF26D5B), width: 2),
+        ),
+        hintStyle: AppTextStyles.bodySm.copyWith(
+          color: AppColors.darkOnSurfaceVariant.withValues(alpha: 0.7),
         ),
       ),
     );
@@ -209,5 +330,17 @@ class AppTextStyles {
         labelSmall: labelCaps,
         labelMedium: dataMono,
       );
-}
 
+  static TextTheme get darkTextTheme => TextTheme(
+        displayLarge: headlineXl.copyWith(color: AppColors.darkInkText),
+        displayMedium: headlineLg.copyWith(color: AppColors.darkInkText),
+        displaySmall: headlineLgMobile.copyWith(color: AppColors.darkInkText),
+        headlineLarge: headlineLg.copyWith(color: AppColors.darkInkText),
+        headlineMedium: headlineMd.copyWith(color: AppColors.darkInkText),
+        bodyLarge: bodyLg.copyWith(color: AppColors.darkInkText),
+        bodyMedium: bodyMd.copyWith(color: AppColors.darkInkText),
+        bodySmall: bodySm.copyWith(color: AppColors.darkOnSurfaceVariant),
+        labelSmall: labelCaps.copyWith(color: AppColors.darkInkText),
+        labelMedium: dataMono.copyWith(color: AppColors.darkInkText),
+      );
+}

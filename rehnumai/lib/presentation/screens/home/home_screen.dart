@@ -7,7 +7,6 @@ import 'package:flutter/material.dart';
 import 'package:provider/provider.dart';
 import '../../../core/app_state.dart';
 import '../../../core/constants/app_colors.dart';
-import '../daily_log/quick_log_screen.dart';
 import '../scan_sheet/scan_sheet_screen.dart';
 
 class HomeScreen extends StatelessWidget {
@@ -16,9 +15,12 @@ class HomeScreen extends StatelessWidget {
   @override
   Widget build(BuildContext context) {
     final appState = Provider.of<AppState>(context);
+    final bg = AppColors.getBg(context);
+    final textPrimary = AppColors.getTextPrimary(context);
+    final textSecondary = AppColors.getTextSecondary(context);
 
     return Scaffold(
-      backgroundColor: AppColors.scaffoldBg,
+      backgroundColor: bg,
       body: SafeArea(
         child: CustomScrollView(
           slivers: [
@@ -33,7 +35,7 @@ class HomeScreen extends StatelessWidget {
                       height: 44,
                       decoration: BoxDecoration(
                         gradient: const LinearGradient(
-                          colors: [AppColors.primary, AppColors.accent],
+                          colors: [AppColors.primary, Color(0xFFF26D5B)],
                           begin: Alignment.topLeft,
                           end: Alignment.bottomRight,
                         ),
@@ -46,7 +48,7 @@ class HomeScreen extends StatelessWidget {
                       ),
                     ),
                     const SizedBox(width: 14),
-                    const Expanded(
+                    Expanded(
                       child: Column(
                         crossAxisAlignment: CrossAxisAlignment.start,
                         children: [
@@ -55,7 +57,7 @@ class HomeScreen extends StatelessWidget {
                             style: TextStyle(
                               fontSize: 22,
                               fontWeight: FontWeight.w700,
-                              color: AppColors.textPrimary,
+                              color: textPrimary,
                               letterSpacing: -0.3,
                             ),
                           ),
@@ -64,19 +66,19 @@ class HomeScreen extends StatelessWidget {
                             style: TextStyle(
                               fontSize: 13,
                               fontWeight: FontWeight.w500,
-                              color: AppColors.textSecondary,
+                              color: textSecondary,
                             ),
                           ),
                         ],
                       ),
                     ),
                     PopupMenuButton<String>(
-                      icon: const Icon(Icons.more_vert_rounded, color: AppColors.textSecondary),
+                      icon: Icon(Icons.more_vert_rounded, color: textSecondary),
                       onSelected: (val) {
                         if (val == 'clear') {
                           appState.clearAllDummyData();
                           ScaffoldMessenger.of(context).showSnackBar(
-                            const SnackBar(content: Text('All dummy data cleared!')),
+                            const SnackBar(content: Text('All data cleared!')),
                           );
                         } else if (val == 'reset') {
                           appState.resetDummyData();
@@ -92,7 +94,7 @@ class HomeScreen extends StatelessWidget {
                             children: [
                               Icon(Icons.delete_outline_rounded, color: Colors.red, size: 20),
                               SizedBox(width: 10),
-                              Text('Clear All Dummy Data'),
+                              Text('Clear All Data'),
                             ],
                           ),
                         ),
@@ -128,77 +130,21 @@ class HomeScreen extends StatelessWidget {
                         );
                       },
                     ),
-                    const SizedBox(height: 12),
-                    InkWell(
-                      onTap: () {
-                        Navigator.of(context).push(
-                          MaterialPageRoute(
-                            builder: (_) => const QuickLogScreen(),
-                          ),
-                        );
-                      },
-                      borderRadius: BorderRadius.circular(16),
-                      child: Container(
-                        padding: const EdgeInsets.all(16),
-                        decoration: BoxDecoration(
-                          color: Colors.white,
-                          borderRadius: BorderRadius.circular(16),
-                          border: Border.all(color: AppColors.divider),
-                        ),
-                        child: Row(
-                          children: [
-                            Container(
-                              padding: const EdgeInsets.all(12),
-                              decoration: BoxDecoration(
-                                color: AppColors.accent.withValues(alpha: 0.1),
-                                borderRadius: BorderRadius.circular(12),
-                              ),
-                              child: const Icon(Icons.edit_note_rounded, color: AppColors.accent, size: 24),
-                            ),
-                            const SizedBox(width: 14),
-                            const Expanded(
-                              child: Column(
-                                crossAxisAlignment: CrossAxisAlignment.start,
-                                children: [
-                                  Text(
-                                    'Quick Daily Logs',
-                                    style: TextStyle(
-                                      fontSize: 16,
-                                      fontWeight: FontWeight.w600,
-                                      color: AppColors.textPrimary,
-                                    ),
-                                  ),
-                                  SizedBox(height: 2),
-                                  Text(
-                                    'Log attendance drops, marks, or notes',
-                                    style: TextStyle(
-                                      fontSize: 12,
-                                      color: AppColors.textSecondary,
-                                    ),
-                                  ),
-                                ],
-                              ),
-                            ),
-                            const Icon(Icons.arrow_forward_ios_rounded, size: 16, color: AppColors.textLight),
-                          ],
-                        ),
-                      ),
-                    ),
                   ],
                 ),
               ),
             ),
 
             // ── Section header ──────────────────────────────────────────
-            const SliverToBoxAdapter(
+            SliverToBoxAdapter(
               child: Padding(
-                padding: EdgeInsets.fromLTRB(24, 20, 24, 12),
+                padding: const EdgeInsets.fromLTRB(24, 20, 24, 12),
                 child: Text(
                   'Recent Analyses',
                   style: TextStyle(
                     fontSize: 17,
                     fontWeight: FontWeight.w600,
-                    color: AppColors.textPrimary,
+                    color: textPrimary,
                   ),
                 ),
               ),
@@ -217,12 +163,12 @@ class HomeScreen extends StatelessWidget {
                       color: AppColors.textLight.withValues(alpha: 0.5),
                     ),
                     const SizedBox(height: 16),
-                    const Text(
+                    Text(
                       'No analyses yet',
                       style: TextStyle(
                         fontSize: 16,
                         fontWeight: FontWeight.w600,
-                        color: AppColors.textSecondary,
+                        color: textSecondary,
                       ),
                     ),
                     const SizedBox(height: 6),

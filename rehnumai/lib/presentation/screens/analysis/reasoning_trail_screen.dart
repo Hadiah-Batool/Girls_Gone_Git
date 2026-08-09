@@ -444,8 +444,9 @@ You are a data extraction specialist. Extract structured student data from raw O
 
   @override
   Widget build(BuildContext context) {
+    final bg = AppColors.getBg(context);
     return Scaffold(
-      backgroundColor: AppColors.surfaceBright,
+      backgroundColor: bg,
       appBar: const AppTopBar(),
       body: Column(
         children: [
@@ -915,38 +916,42 @@ class _StudentPickerForAnalysis extends StatelessWidget {
   Widget build(BuildContext context) {
     final appState = context.watch<AppState>();
     final students = appState.students;
+    final cardBg = AppColors.getCardBg(context);
+    final textPrimary = AppColors.getTextPrimary(context);
+    final textSecondary = AppColors.getTextSecondary(context);
+    final borderColor = AppColors.getBorderColor(context);
 
     return Column(
       crossAxisAlignment: CrossAxisAlignment.start,
       children: [
-        const Padding(
-          padding: EdgeInsets.only(bottom: 8),
+        Padding(
+          padding: const EdgeInsets.only(bottom: 8),
           child: Text(
             'Select a Student to Analyze',
             style: TextStyle(
               fontSize: 16,
               fontWeight: FontWeight.w700,
-              color: AppColors.inkText,
+              color: textPrimary,
             ),
           ),
         ),
         Container(
           padding: const EdgeInsets.symmetric(horizontal: 14, vertical: 4),
           decoration: BoxDecoration(
-            color: AppColors.surfaceContainerLowest,
+            color: cardBg,
             borderRadius: BorderRadius.circular(12),
-            border: Border.all(color: AppColors.outlineVariant),
+            border: Border.all(color: borderColor),
           ),
           child: students.isEmpty
               ? Column(
                   crossAxisAlignment: CrossAxisAlignment.start,
                   children: [
-                    const Padding(
-                      padding: EdgeInsets.symmetric(vertical: 12),
+                    Padding(
+                      padding: const EdgeInsets.symmetric(vertical: 12),
                       child: Text(
                         'No students available. Scan a sheet or reset sample data.',
                         style: TextStyle(
-                          color: AppColors.onSurfaceVariant,
+                          color: textSecondary,
                           fontSize: 13,
                         ),
                       ),
@@ -972,9 +977,9 @@ class _StudentPickerForAnalysis extends StatelessWidget {
                       : students.first,
                   isExpanded: true,
                   underline: const SizedBox.shrink(),
-                  dropdownColor: AppColors.surfaceContainerLowest,
-                  style: const TextStyle(
-                    color: AppColors.onSurface,
+                  dropdownColor: cardBg,
+                  style: TextStyle(
+                    color: textPrimary,
                     fontSize: 14,
                     fontWeight: FontWeight.w600,
                   ),
@@ -985,8 +990,8 @@ class _StudentPickerForAnalysis extends StatelessWidget {
                           child: Text(
                             '${s.name} · ${s.grade}',
                             overflow: TextOverflow.ellipsis,
-                            style: const TextStyle(
-                              color: AppColors.onSurface,
+                            style: TextStyle(
+                              color: textPrimary,
                               fontSize: 14,
                             ),
                           ),

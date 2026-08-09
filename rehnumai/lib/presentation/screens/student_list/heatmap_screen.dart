@@ -58,13 +58,6 @@ class _HeatmapScreenState extends State<HeatmapScreen> {
     }).toList();
   }
 
-  void _showLogDialog(StudentTile student) {
-    showDialog(
-      context: context,
-      builder: (context) => _LogStudentDialog(student: student),
-    );
-  }
-
   @override
   Widget build(BuildContext context) {
     final appState = Provider.of<AppState>(context);
@@ -77,8 +70,14 @@ class _HeatmapScreenState extends State<HeatmapScreen> {
         ? currentStudents
         : currentStudents.where((s) => s.name.toLowerCase().contains(_searchQuery.toLowerCase())).toList();
 
+    final bg = AppColors.getBg(context);
+    final cardBg = AppColors.getCardBg(context);
+    final textPrimary = AppColors.getTextPrimary(context);
+    final textSecondary = AppColors.getTextSecondary(context);
+    final borderColor = AppColors.getBorderColor(context);
+
     return Scaffold(
-      backgroundColor: AppColors.surfaceBright,
+      backgroundColor: bg,
       appBar: const AppTopBar(),
       drawer: _RehnumaiDrawer(appState: appState),
       floatingActionButton: FloatingActionButton.extended(
@@ -105,17 +104,17 @@ class _HeatmapScreenState extends State<HeatmapScreen> {
             ),
             const SizedBox(height: 24),
             TextField(
-              style: const TextStyle(color: AppColors.onSurface, fontSize: 15),
+              style: TextStyle(color: textPrimary, fontSize: 15),
               decoration: InputDecoration(
                 hintText: 'Search student...',
-                hintStyle: const TextStyle(color: AppColors.onSurfaceVariant),
-                prefixIcon: const Icon(Icons.search, color: AppColors.onSurfaceVariant),
+                hintStyle: TextStyle(color: textSecondary),
+                prefixIcon: Icon(Icons.search, color: textSecondary),
                 filled: true,
-                fillColor: AppColors.surfaceContainerLowest,
+                fillColor: cardBg,
                 contentPadding: const EdgeInsets.symmetric(vertical: 0),
                 enabledBorder: OutlineInputBorder(
                   borderRadius: BorderRadius.circular(12),
-                  borderSide: const BorderSide(color: AppColors.outlineVariant),
+                  borderSide: BorderSide(color: borderColor),
                 ),
                 focusedBorder: OutlineInputBorder(
                   borderRadius: BorderRadius.circular(12),
@@ -132,7 +131,7 @@ class _HeatmapScreenState extends State<HeatmapScreen> {
             Text(
               "Ustaad's Eye",
               style: AppTextStyles.headlineMd.copyWith(
-                color: AppColors.inkText,
+                color: textPrimary,
               ),
             ),
             const SizedBox(height: 12),
@@ -144,9 +143,9 @@ class _HeatmapScreenState extends State<HeatmapScreen> {
                     children: [
                       const Icon(Icons.inbox_outlined, size: 48, color: AppColors.textLight),
                       const SizedBox(height: 12),
-                      const Text(
+                      Text(
                         'No student records found.',
-                        style: TextStyle(fontSize: 16, fontWeight: FontWeight.w600, color: AppColors.textSecondary),
+                        style: TextStyle(fontSize: 16, fontWeight: FontWeight.w600, color: textSecondary),
                       ),
                       const SizedBox(height: 6),
                       ElevatedButton.icon(
@@ -164,7 +163,6 @@ class _HeatmapScreenState extends State<HeatmapScreen> {
                   padding: const EdgeInsets.only(bottom: 8.0),
                   child: _StudentCard(
                     student: student,
-                    onLog: () => _showLogDialog(student),
                   ),
                 );
               }),
@@ -192,9 +190,13 @@ class _ClassStatusCard extends StatelessWidget {
 
   @override
   Widget build(BuildContext context) {
+    final sandBg = AppColors.getSandBg(context);
+    final textPrimary = AppColors.getTextPrimary(context);
+    final textSecondary = AppColors.getTextSecondary(context);
+
     return Container(
       decoration: BoxDecoration(
-        color: AppColors.sandBg,
+        color: sandBg,
         borderRadius: BorderRadius.circular(12),
         boxShadow: [
           BoxShadow(
@@ -207,7 +209,6 @@ class _ClassStatusCard extends StatelessWidget {
       clipBehavior: Clip.antiAlias,
       child: Stack(
         children: [
-          // Decorative blur orb
           Positioned(
             top: -20,
             right: -20,
@@ -234,28 +235,27 @@ class _ClassStatusCard extends StatelessWidget {
                           Text(
                             'Class Status',
                             style: AppTextStyles.headlineMd.copyWith(
-                              color: AppColors.inkText,
+                              color: textPrimary,
                             ),
                           ),
                           const SizedBox(height: 4),
                           Text(
                             'Grade 8 – English Section A',
                             style: AppTextStyles.bodySm.copyWith(
-                              color: AppColors.onSurfaceVariant,
+                              color: textSecondary,
                             ),
                           ),
                         ],
                       ),
                     ),
-                    // Donut chart
                     SizedBox(
                       width: 80,
                       height: 80,
                       child: CustomPaint(
                         painter: _DonutPainter(
-                          stable: stableCount / total,
-                          medium: mediumCount / total,
-                          high: highCount / total,
+                          stable: total > 0 ? stableCount / total : 1.0,
+                          medium: total > 0 ? mediumCount / total : 0.0,
+                          high: total > 0 ? highCount / total : 0.0,
                         ),
                         child: Center(
                           child: Column(
@@ -264,14 +264,14 @@ class _ClassStatusCard extends StatelessWidget {
                               Text(
                                 '$total',
                                 style: AppTextStyles.headlineMd.copyWith(
-                                  color: AppColors.inkText,
+                                  color: textPrimary,
                                   height: 1,
                                 ),
                               ),
                               Text(
                                 'TOTAL',
                                 style: AppTextStyles.labelCaps.copyWith(
-                                  color: AppColors.onSurfaceVariant,
+                                  color: textSecondary,
                                   fontSize: 9,
                                 ),
                               ),
@@ -317,6 +317,7 @@ class _LegendDot extends StatelessWidget {
 
   @override
   Widget build(BuildContext context) {
+    final textPrimary = AppColors.getTextPrimary(context);
     return Row(
       mainAxisSize: MainAxisSize.min,
       children: [
@@ -328,7 +329,7 @@ class _LegendDot extends StatelessWidget {
         const SizedBox(width: 6),
         Text(
           label,
-          style: AppTextStyles.labelCaps.copyWith(color: AppColors.inkText),
+          style: AppTextStyles.labelCaps.copyWith(color: textPrimary),
         ),
       ],
     );
@@ -357,7 +358,6 @@ class _DonutPainter extends CustomPainter {
       ..strokeWidth = strokeWidth
       ..strokeCap = StrokeCap.butt;
 
-    // Start from top (-π/2), sweep full circle
     const start = -math.pi / 2;
     final fullAngle = 2 * math.pi;
 
@@ -394,8 +394,7 @@ class _DonutPainter extends CustomPainter {
 
 class _StudentCard extends StatelessWidget {
   final StudentTile student;
-  final VoidCallback onLog;
-  const _StudentCard({required this.student, required this.onLog});
+  const _StudentCard({required this.student});
 
   Color get _avatarBg => switch (student.risk) {
         RiskLevel.high => AppColors.primaryFixedDim,
@@ -420,6 +419,9 @@ class _StudentCard extends StatelessWidget {
   @override
   Widget build(BuildContext context) {
     final targetStudent = _getStudentModel(context, student);
+    final cardBg = AppColors.getCardBg(context);
+    final textPrimary = AppColors.getTextPrimary(context);
+    final borderColor = AppColors.getBorderColor(context);
 
     return InkWell(
       onTap: () {
@@ -436,9 +438,9 @@ class _StudentCard extends StatelessWidget {
       child: Container(
         padding: const EdgeInsets.symmetric(horizontal: 14, vertical: 12),
         decoration: BoxDecoration(
-          color: AppColors.surfaceContainerLowest,
+          color: cardBg,
           borderRadius: BorderRadius.circular(12),
-          border: Border.all(color: AppColors.outlineVariant.withValues(alpha: 0.5)),
+          border: Border.all(color: borderColor),
           boxShadow: [
             BoxShadow(
               color: Colors.black.withValues(alpha: 0.04),
@@ -470,7 +472,7 @@ class _StudentCard extends StatelessWidget {
                     overflow: TextOverflow.ellipsis,
                     style: AppTextStyles.bodyMd.copyWith(
                       fontWeight: FontWeight.w700,
-                      color: AppColors.inkText,
+                      color: textPrimary,
                     ),
                   ),
                   const SizedBox(height: 2),
@@ -484,7 +486,7 @@ class _StudentCard extends StatelessWidget {
               crossAxisAlignment: CrossAxisAlignment.end,
               children: [
                 SizedBox(
-                  height: 32,
+                  height: 30,
                   child: ElevatedButton.icon(
                     onPressed: () {
                       Navigator.of(context).push(
@@ -512,13 +514,22 @@ class _StudentCard extends StatelessWidget {
                 SizedBox(
                   height: 28,
                   child: OutlinedButton.icon(
-                    onPressed: onLog,
-                    icon: const Icon(Icons.edit_note, size: 13),
-                    label: const Text('Log'),
+                    onPressed: () {
+                      Navigator.of(context).push(
+                        MaterialPageRoute(
+                          builder: (_) => ReasoningTrailScreen(
+                            student: targetStudent,
+                            autoRun: false,
+                          ),
+                        ),
+                      );
+                    },
+                    icon: const Icon(Icons.visibility_rounded, size: 13),
+                    label: const Text('View Result'),
                     style: OutlinedButton.styleFrom(
-                      foregroundColor: AppColors.inkText,
-                      side: const BorderSide(color: AppColors.outline),
-                      padding: const EdgeInsets.symmetric(horizontal: 10, vertical: 0),
+                      foregroundColor: textPrimary,
+                      side: BorderSide(color: borderColor),
+                      padding: const EdgeInsets.symmetric(horizontal: 8, vertical: 0),
                       textStyle: const TextStyle(fontSize: 11, fontWeight: FontWeight.w700),
                       shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(8)),
                     ),
@@ -580,12 +591,13 @@ class _RehnumaiDrawer extends StatelessWidget {
 
   @override
   Widget build(BuildContext context) {
+    final drawerBg = AppColors.getBg(context);
+
     return Drawer(
-      backgroundColor: AppColors.surfaceBright,
+      backgroundColor: drawerBg,
       child: SafeArea(
         child: Column(
           children: [
-            // ── Header ──────────────────────────────────────────────────
             Container(
               width: double.infinity,
               padding: const EdgeInsets.fromLTRB(20, 24, 20, 20),
@@ -625,12 +637,10 @@ class _RehnumaiDrawer extends StatelessWidget {
               ),
             ),
 
-            // ── Menu items ──────────────────────────────────────────────
             Expanded(
               child: ListView(
                 padding: const EdgeInsets.symmetric(vertical: 8),
                 children: [
-                  // Teacher Profile
                   _DrawerItem(
                     icon: Icons.person_rounded,
                     iconColor: AppColors.primary,
@@ -645,7 +655,6 @@ class _RehnumaiDrawer extends StatelessWidget {
                   ),
                   const Divider(height: 1, indent: 16, endIndent: 16),
 
-                  // Dark Mode Toggle
                   _DrawerToggleItem(
                     icon: appState.isDarkMode
                         ? Icons.light_mode_rounded
@@ -657,10 +666,9 @@ class _RehnumaiDrawer extends StatelessWidget {
                   ),
                   const Divider(height: 1, indent: 16, endIndent: 16),
 
-                  // Settings
                   _DrawerItem(
                     icon: Icons.settings_rounded,
-                    iconColor: AppColors.onSurfaceVariant,
+                    iconColor: AppColors.getOnSurfaceVariant(context),
                     label: 'Settings',
                     onTap: () {
                       Navigator.pop(context);
@@ -673,7 +681,6 @@ class _RehnumaiDrawer extends StatelessWidget {
                   ),
                   const Divider(height: 1, indent: 16, endIndent: 16),
 
-                  // Scan Sheet shortcut
                   _DrawerItem(
                     icon: Icons.document_scanner_rounded,
                     iconColor: AppColors.tertiary,
@@ -690,7 +697,6 @@ class _RehnumaiDrawer extends StatelessWidget {
                   ),
                   const Divider(height: 1, indent: 16, endIndent: 16),
 
-                  // Reset Sample Data
                   _DrawerItem(
                     icon: Icons.restore_rounded,
                     iconColor: AppColors.primary,
@@ -708,7 +714,6 @@ class _RehnumaiDrawer extends StatelessWidget {
                     },
                   ),
 
-                  // Clear All Data
                   _DrawerItem(
                     icon: Icons.delete_outline_rounded,
                     iconColor: Colors.red,
@@ -751,10 +756,9 @@ class _RehnumaiDrawer extends StatelessWidget {
                   ),
                   const Divider(height: 1, indent: 16, endIndent: 16),
 
-                  // Help & About
                   _DrawerItem(
                     icon: Icons.info_outline_rounded,
-                    iconColor: AppColors.onSurfaceVariant,
+                    iconColor: AppColors.getOnSurfaceVariant(context),
                     label: 'About Rehnumai',
                     subtitle: 'v1.0.0 — AI risk analyzer',
                     onTap: () {
@@ -812,6 +816,9 @@ class _DrawerItem extends StatelessWidget {
 
   @override
   Widget build(BuildContext context) {
+    final textPrimary = AppColors.getTextPrimary(context);
+    final textSecondary = AppColors.getTextSecondary(context);
+
     return ListTile(
       leading: Container(
         width: 36,
@@ -824,18 +831,18 @@ class _DrawerItem extends StatelessWidget {
       ),
       title: Text(
         label,
-        style: const TextStyle(
+        style: TextStyle(
           fontSize: 14,
           fontWeight: FontWeight.w600,
-          color: AppColors.inkText,
+          color: textPrimary,
         ),
       ),
       subtitle: subtitle != null
           ? Text(
               subtitle!,
-              style: const TextStyle(
+              style: TextStyle(
                 fontSize: 12,
-                color: AppColors.onSurfaceVariant,
+                color: textSecondary,
               ),
               maxLines: 1,
               overflow: TextOverflow.ellipsis,
@@ -863,6 +870,8 @@ class _DrawerToggleItem extends StatelessWidget {
 
   @override
   Widget build(BuildContext context) {
+    final textPrimary = AppColors.getTextPrimary(context);
+
     return SwitchListTile(
       secondary: Container(
         width: 36,
@@ -873,12 +882,12 @@ class _DrawerToggleItem extends StatelessWidget {
         ),
         child: Icon(icon, color: iconColor, size: 20),
       ),
-      title: const Text(
+      title: Text(
         'Dark Mode',
         style: TextStyle(
           fontSize: 14,
           fontWeight: FontWeight.w600,
-          color: AppColors.inkText,
+          color: textPrimary,
         ),
       ),
       value: value,
@@ -926,8 +935,10 @@ class _EditProfileDialogState extends State<_EditProfileDialog> {
 
   @override
   Widget build(BuildContext context) {
+    final dialogBg = AppColors.getCardBg(context);
+
     return AlertDialog(
-      backgroundColor: AppColors.surfaceBright,
+      backgroundColor: dialogBg,
       title: Row(
         children: [
           const Icon(Icons.person_rounded, color: AppColors.primary),
@@ -1005,23 +1016,28 @@ class _EditProfileDialogState extends State<_EditProfileDialog> {
     IconData icon, {
     TextInputType keyboardType = TextInputType.text,
   }) {
+    final textPrimary = AppColors.getTextPrimary(context);
+    final textSecondary = AppColors.getTextSecondary(context);
+    final inputBg = AppColors.getCardBg(context);
+    final borderColor = AppColors.getBorderColor(context);
+
     return TextFormField(
       controller: ctrl,
       keyboardType: keyboardType,
-      style: const TextStyle(color: AppColors.onSurface, fontSize: 15),
+      style: TextStyle(color: textPrimary, fontSize: 15),
       decoration: InputDecoration(
         labelText: label,
-        labelStyle: const TextStyle(color: AppColors.onSurfaceVariant),
+        labelStyle: TextStyle(color: textSecondary),
         prefixIcon: Icon(icon, color: AppColors.primary, size: 20),
         filled: true,
-        fillColor: AppColors.surfaceContainerLowest,
+        fillColor: inputBg,
         border: OutlineInputBorder(
           borderRadius: BorderRadius.circular(8),
-          borderSide: const BorderSide(color: AppColors.outlineVariant),
+          borderSide: BorderSide(color: borderColor),
         ),
         enabledBorder: OutlineInputBorder(
           borderRadius: BorderRadius.circular(8),
-          borderSide: const BorderSide(color: AppColors.outlineVariant),
+          borderSide: BorderSide(color: borderColor),
         ),
         focusedBorder: OutlineInputBorder(
           borderRadius: BorderRadius.circular(8),
@@ -1030,116 +1046,6 @@ class _EditProfileDialogState extends State<_EditProfileDialog> {
         contentPadding: const EdgeInsets.symmetric(horizontal: 12, vertical: 12),
       ),
       validator: (v) => v == null || v.isEmpty ? 'Required' : null,
-    );
-  }
-}
-
-class _LogStudentDialog extends StatefulWidget {
-  final StudentTile student;
-  const _LogStudentDialog({required this.student});
-
-  @override
-  State<_LogStudentDialog> createState() => _LogStudentDialogState();
-}
-
-class _LogStudentDialogState extends State<_LogStudentDialog> {
-  final Set<String> _selectedTags = {};
-  final List<String> _tags = ['Attendance', 'Academics', 'Behaviors'];
-
-  @override
-  Widget build(BuildContext context) {
-    return AlertDialog(
-      backgroundColor: AppColors.surfaceBright,
-      title: Text(
-        'Log Data: ${widget.student.name}',
-        style: AppTextStyles.headlineMd.copyWith(color: AppColors.onSurface),
-      ),
-      content: Column(
-        mainAxisSize: MainAxisSize.min,
-        crossAxisAlignment: CrossAxisAlignment.start,
-        children: [
-          Text(
-            'Select categories to log:',
-            style: AppTextStyles.bodyMd.copyWith(color: AppColors.onSurface),
-          ),
-          const SizedBox(height: 12),
-          Wrap(
-            spacing: 8,
-            runSpacing: 8,
-            children: _tags.map((tag) {
-              final isSelected = _selectedTags.contains(tag);
-              return FilterChip(
-                label: Text(
-                  tag,
-                  style: TextStyle(
-                    color: isSelected
-                        ? AppColors.onPrimaryContainer
-                        : AppColors.onSurface,
-                    fontWeight: FontWeight.w600,
-                  ),
-                ),
-                selected: isSelected,
-                onSelected: (selected) {
-                  setState(() {
-                    if (selected) {
-                      _selectedTags.add(tag);
-                    } else {
-                      _selectedTags.remove(tag);
-                    }
-                  });
-                },
-                selectedColor: AppColors.primaryContainer,
-                checkmarkColor: AppColors.onPrimaryContainer,
-              );
-            }).toList(),
-          ),
-          const SizedBox(height: 16),
-          TextField(
-            maxLines: 3,
-            style: const TextStyle(color: AppColors.onSurface, fontSize: 15),
-            decoration: InputDecoration(
-              hintText: 'Enter log details...',
-              hintStyle: const TextStyle(color: AppColors.onSurfaceVariant),
-              filled: true,
-              fillColor: AppColors.surfaceContainerLowest,
-              border: OutlineInputBorder(
-                borderRadius: BorderRadius.circular(8),
-                borderSide: const BorderSide(color: AppColors.outlineVariant),
-              ),
-              enabledBorder: OutlineInputBorder(
-                borderRadius: BorderRadius.circular(8),
-                borderSide: const BorderSide(color: AppColors.outlineVariant),
-              ),
-              focusedBorder: OutlineInputBorder(
-                borderRadius: BorderRadius.circular(8),
-                borderSide: const BorderSide(color: AppColors.primary, width: 2),
-              ),
-            ),
-          )
-        ],
-      ),
-      actions: [
-        TextButton(
-          onPressed: () => Navigator.pop(context),
-          style: TextButton.styleFrom(
-            foregroundColor: AppColors.onSurfaceVariant,
-          ),
-          child: const Text('Cancel'),
-        ),
-        ElevatedButton(
-          onPressed: () {
-            Navigator.pop(context);
-            ScaffoldMessenger.of(context).showSnackBar(
-              SnackBar(content: Text('Logged for ${widget.student.name}')),
-            );
-          },
-          style: ElevatedButton.styleFrom(
-            backgroundColor: AppColors.primary,
-            foregroundColor: AppColors.onPrimary,
-          ),
-          child: const Text('Save Log'),
-        ),
-      ],
     );
   }
 }

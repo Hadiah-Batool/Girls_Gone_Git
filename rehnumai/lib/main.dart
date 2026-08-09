@@ -45,7 +45,7 @@ class RehnumaiApp extends StatelessWidget {
       title: 'Rehnumai',
       debugShowCheckedModeBanner: false,
       theme: AppTheme.lightTheme,
-      darkTheme: ThemeData.dark(useMaterial3: true),
+      darkTheme: AppTheme.darkTheme,
       themeMode: appState.isDarkMode ? ThemeMode.dark : ThemeMode.light,
       home: appState.isProfileComplete
           ? const MainShell()

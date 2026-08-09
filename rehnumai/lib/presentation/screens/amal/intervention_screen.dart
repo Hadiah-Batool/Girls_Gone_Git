@@ -29,21 +29,21 @@ class _InterventionScreenState extends State<InterventionScreen> {
     final appState = Provider.of<AppState>(context);
     final students = appState.students;
 
-    // Auto-select first student if available and none selected
     if (_selectedStudent == null && students.isNotEmpty) {
       _selectedStudent = students.first;
     }
-    // If selected student was removed, reset
     if (_selectedStudent != null &&
         !students.any((s) => s.id == _selectedStudent!.id)) {
       _selectedStudent = students.isNotEmpty ? students.first : null;
     }
 
+    final bg = AppColors.getBg(context);
+
     return Scaffold(
-      backgroundColor: AppColors.surfaceBright,
+      backgroundColor: bg,
       appBar: const AppTopBar(),
       body: SingleChildScrollView(
-        padding: const EdgeInsets.fromLTRB(16, 8, 16, 40),
+        padding: const EdgeInsets.fromLTRB(16, 8, 16, 120),
         child: Column(
           crossAxisAlignment: CrossAxisAlignment.start,
           children: [
@@ -51,7 +51,12 @@ class _InterventionScreenState extends State<InterventionScreen> {
             _StudentSelectorCard(
               students: students,
               selectedStudent: _selectedStudent,
-              onChanged: (student) => setState(() => _selectedStudent = student),
+              onChanged: (student) {
+                setState(() {
+                  _selectedStudent = student;
+                  _messageSent = false;
+                });
+              },
             ),
             const SizedBox(height: 16),
 
@@ -71,7 +76,6 @@ class _InterventionScreenState extends State<InterventionScreen> {
                 student: _selectedStudent,
                 isSent: _messageSent,
                 onSend: () => setState(() => _messageSent = true),
-                onStudentChanged: () => setState(() => _messageSent = false),
               ),
               const SizedBox(height: 12),
 
@@ -88,8 +92,8 @@ class _InterventionScreenState extends State<InterventionScreen> {
               // ── Home visit
               _ActionListTile(
                 icon: Icons.home_work,
-                iconBg: AppColors.surfaceContainerHigh,
-                iconColor: AppColors.onSurfaceVariant,
+                iconBg: AppColors.isDark(context) ? const Color(0xFF382F28) : AppColors.surfaceContainerHigh,
+                iconColor: AppColors.getTextSecondary(context),
                 title: 'Schedule Home Visit',
                 subtitle: 'Check-in personally with the family',
               ),
@@ -111,6 +115,9 @@ class _EmptyState extends StatelessWidget {
   @override
   Widget build(BuildContext context) {
     final appState = Provider.of<AppState>(context, listen: false);
+    final textPrimary = AppColors.getTextPrimary(context);
+    final textSecondary = AppColors.getTextSecondary(context);
+
     return Center(
       child: Padding(
         padding: const EdgeInsets.symmetric(vertical: 48),
@@ -121,12 +128,12 @@ class _EmptyState extends StatelessWidget {
             const SizedBox(height: 16),
             Text(
               'No students found.',
-              style: AppTextStyles.headlineMd.copyWith(fontSize: 16, color: AppColors.inkText),
+              style: AppTextStyles.headlineMd.copyWith(fontSize: 16, color: textPrimary),
             ),
             const SizedBox(height: 6),
-            const Text(
+            Text(
               'Scan a sheet or reset sample data first.',
-              style: TextStyle(color: AppColors.onSurfaceVariant, fontSize: 13),
+              style: TextStyle(color: textSecondary, fontSize: 13),
             ),
             const SizedBox(height: 16),
             ElevatedButton.icon(
@@ -160,12 +167,17 @@ class _StudentSelectorCard extends StatelessWidget {
 
   @override
   Widget build(BuildContext context) {
+    final cardBg = AppColors.getCardBg(context);
+    final textPrimary = AppColors.getTextPrimary(context);
+    final textSecondary = AppColors.getTextSecondary(context);
+    final borderColor = AppColors.getBorderColor(context);
+
     return Container(
       padding: const EdgeInsets.all(14),
       decoration: BoxDecoration(
-        color: AppColors.surfaceContainerLowest,
+        color: cardBg,
         borderRadius: BorderRadius.circular(12),
-        border: Border.all(color: AppColors.outlineVariant.withValues(alpha: 0.6)),
+        border: Border.all(color: borderColor),
       ),
       child: Row(
         children: [
@@ -173,10 +185,10 @@ class _StudentSelectorCard extends StatelessWidget {
           const SizedBox(width: 12),
           Expanded(
             child: students.isEmpty
-                ? const Text(
+                ? Text(
                     'No students — scan a sheet first',
                     style: TextStyle(
-                      color: AppColors.onSurfaceVariant,
+                      color: textSecondary,
                       fontSize: 14,
                     ),
                   )
@@ -184,12 +196,12 @@ class _StudentSelectorCard extends StatelessWidget {
                     value: selectedStudent,
                     isExpanded: true,
                     underline: const SizedBox.shrink(),
-                    style: const TextStyle(
-                      color: AppColors.onSurface,
+                    style: TextStyle(
+                      color: textPrimary,
                       fontSize: 14,
                       fontWeight: FontWeight.w600,
                     ),
-                    dropdownColor: AppColors.surfaceContainerLowest,
+                    dropdownColor: cardBg,
                     items: students
                         .map(
                           (s) => DropdownMenuItem<Student>(
@@ -197,8 +209,8 @@ class _StudentSelectorCard extends StatelessWidget {
                             child: Text(
                               '${s.name} · ${s.grade}',
                               overflow: TextOverflow.ellipsis,
-                              style: const TextStyle(
-                                color: AppColors.onSurface,
+                              style: TextStyle(
+                                color: textPrimary,
                                 fontSize: 14,
                               ),
                             ),
@@ -224,19 +236,21 @@ class _ContextHeader extends StatelessWidget {
   Widget build(BuildContext context) {
     final name = student?.name ?? 'Student';
     final grade = student?.grade ?? '';
+    final textPrimary = AppColors.getTextPrimary(context);
+    final textSecondary = AppColors.getTextSecondary(context);
 
     return Column(
       crossAxisAlignment: CrossAxisAlignment.start,
       children: [
         Text(
           'Intervention Hub',
-          style: AppTextStyles.headlineMd.copyWith(color: AppColors.inkText),
+          style: AppTextStyles.headlineMd.copyWith(color: textPrimary),
         ),
         const SizedBox(height: 4),
         RichText(
           text: TextSpan(
             style: AppTextStyles.bodyMd.copyWith(
-              color: AppColors.onSurfaceVariant,
+              color: textSecondary,
             ),
             children: [
               const TextSpan(text: 'Recommended actions for '),
@@ -282,10 +296,13 @@ class _DiagnosisBanner extends StatelessWidget {
 
   @override
   Widget build(BuildContext context) {
+    final bannerBg = AppColors.isDark(context) ? const Color(0xFF2A231C) : AppColors.inverseOnSurface;
+    final textSecondary = AppColors.getTextSecondary(context);
+
     return Container(
       padding: const EdgeInsets.all(16),
       decoration: BoxDecoration(
-        color: AppColors.inverseOnSurface,
+        color: bannerBg,
         borderRadius: BorderRadius.circular(8),
         border: const Border(
           left: BorderSide(color: AppColors.riskMedium, width: 4),
@@ -310,7 +327,7 @@ class _DiagnosisBanner extends StatelessWidget {
                 Text(
                   _getDiagnosis(student),
                   style: AppTextStyles.bodySm.copyWith(
-                    color: AppColors.onSurfaceVariant,
+                    color: textSecondary,
                     height: 1.5,
                   ),
                 ),
@@ -330,12 +347,10 @@ class _ParentMessageCard extends StatefulWidget {
     required this.student,
     required this.isSent,
     required this.onSend,
-    required this.onStudentChanged,
   });
   final Student? student;
   final bool isSent;
   final VoidCallback onSend;
-  final VoidCallback onStudentChanged;
 
   @override
   State<_ParentMessageCard> createState() => _ParentMessageCardState();
@@ -361,7 +376,6 @@ class _ParentMessageCardState extends State<_ParentMessageCard> {
     super.didUpdateWidget(oldWidget);
     if (oldWidget.student?.id != widget.student?.id) {
       _editController.text = _buildMessage(widget.student);
-      widget.onStudentChanged();
     }
   }
 
@@ -373,6 +387,11 @@ class _ParentMessageCardState extends State<_ParentMessageCard> {
 
   @override
   Widget build(BuildContext context) {
+    final textPrimary = AppColors.getTextPrimary(context);
+    final textSecondary = AppColors.getTextSecondary(context);
+    final bubbleBg = AppColors.getCardBg(context);
+    final borderColor = AppColors.getBorderColor(context);
+
     return Container(
       decoration: BoxDecoration(
         color: AppColors.primary.withValues(alpha: 0.05),
@@ -382,7 +401,6 @@ class _ParentMessageCardState extends State<_ParentMessageCard> {
       clipBehavior: Clip.antiAlias,
       child: Stack(
         children: [
-          // Decorative orb
           Positioned(
             top: -20,
             right: -20,
@@ -400,7 +418,6 @@ class _ParentMessageCardState extends State<_ParentMessageCard> {
             child: Column(
               crossAxisAlignment: CrossAxisAlignment.start,
               children: [
-                // Title row
                 Row(
                   children: [
                     const Icon(Icons.chat_bubble_outline, color: AppColors.primary, size: 20),
@@ -410,7 +427,7 @@ class _ParentMessageCardState extends State<_ParentMessageCard> {
                         'Draft Parent Message',
                         style: AppTextStyles.headlineMd.copyWith(
                           fontSize: 18,
-                          color: AppColors.inkText,
+                          color: textPrimary,
                         ),
                       ),
                     ),
@@ -432,20 +449,17 @@ class _ParentMessageCardState extends State<_ParentMessageCard> {
                 ),
                 const SizedBox(height: 16),
 
-                // Message bubble
                 Container(
                   padding: const EdgeInsets.all(16),
                   decoration: BoxDecoration(
-                    color: AppColors.surfaceBright,
+                    color: bubbleBg,
                     borderRadius: const BorderRadius.only(
                       topLeft: Radius.circular(4),
                       topRight: Radius.circular(16),
                       bottomLeft: Radius.circular(16),
                       bottomRight: Radius.circular(16),
                     ),
-                    border: Border.all(
-                      color: AppColors.outlineVariant.withValues(alpha: 0.3),
-                    ),
+                    border: Border.all(color: borderColor),
                     boxShadow: [
                       BoxShadow(
                         color: Colors.black.withValues(alpha: 0.04),
@@ -458,7 +472,7 @@ class _ParentMessageCardState extends State<_ParentMessageCard> {
                           controller: _editController,
                           maxLines: 5,
                           style: AppTextStyles.bodySm.copyWith(
-                            color: AppColors.onSurface,
+                            color: textPrimary,
                           ),
                           decoration: const InputDecoration(
                             border: InputBorder.none,
@@ -473,14 +487,13 @@ class _ParentMessageCardState extends State<_ParentMessageCard> {
                           style: AppTextStyles.bodySm.copyWith(
                             color: widget.isSent
                                 ? AppColors.tertiary
-                                : AppColors.onSurfaceVariant,
+                                : textSecondary,
                             height: 1.6,
                           ),
                         ),
                 ),
                 const SizedBox(height: 12),
 
-                // Actions
                 Row(
                   mainAxisAlignment: MainAxisAlignment.end,
                   children: [
@@ -489,7 +502,7 @@ class _ParentMessageCardState extends State<_ParentMessageCard> {
                         icon: Icon(
                           _isEditing ? Icons.check : Icons.edit,
                           size: 20,
-                          color: AppColors.onSurfaceVariant,
+                          color: textSecondary,
                         ),
                         onPressed: () {
                           setState(() => _isEditing = !_isEditing);
@@ -550,8 +563,13 @@ class _ActionListTile extends StatelessWidget {
 
   @override
   Widget build(BuildContext context) {
+    final cardBg = AppColors.getCardBg(context);
+    final textPrimary = AppColors.getTextPrimary(context);
+    final textSecondary = AppColors.getTextSecondary(context);
+    final borderColor = AppColors.getBorderColor(context);
+
     return Material(
-      color: AppColors.surfaceContainerLowest,
+      color: cardBg,
       borderRadius: BorderRadius.circular(12),
       child: InkWell(
         onTap: () {},
@@ -560,9 +578,7 @@ class _ActionListTile extends StatelessWidget {
           padding: const EdgeInsets.all(16),
           decoration: BoxDecoration(
             borderRadius: BorderRadius.circular(12),
-            border: Border.all(
-              color: AppColors.outlineVariant.withValues(alpha: 0.3),
-            ),
+            border: Border.all(color: borderColor),
           ),
           child: Row(
             children: [
@@ -584,21 +600,21 @@ class _ActionListTile extends StatelessWidget {
                       title,
                       style: AppTextStyles.bodyMd.copyWith(
                         fontWeight: FontWeight.w600,
-                        color: AppColors.inkText,
+                        color: textPrimary,
                       ),
                     ),
                     Text(
                       subtitle,
                       style: AppTextStyles.bodySm.copyWith(
-                        color: AppColors.onSurfaceVariant,
+                        color: textSecondary,
                       ),
                     ),
                   ],
                 ),
               ),
-              const Icon(
+              Icon(
                 Icons.chevron_right,
-                color: AppColors.onSurfaceVariant,
+                color: textSecondary,
               ),
             ],
           ),
@@ -616,12 +632,18 @@ class _GutCheckCard extends StatelessWidget {
 
   @override
   Widget build(BuildContext context) {
+    final sandBg = AppColors.getSandBg(context);
+    final textPrimary = AppColors.getTextPrimary(context);
+    final textSecondary = AppColors.getTextSecondary(context);
+    final inputBg = AppColors.getCardBg(context);
+    final borderColor = AppColors.getBorderColor(context);
+
     return Container(
       padding: const EdgeInsets.all(20),
       decoration: BoxDecoration(
-        color: AppColors.sandBg,
+        color: sandBg,
         borderRadius: BorderRadius.circular(12),
-        border: Border.all(color: AppColors.surfaceDim),
+        border: Border.all(color: borderColor),
       ),
       child: Column(
         crossAxisAlignment: CrossAxisAlignment.start,
@@ -634,7 +656,7 @@ class _GutCheckCard extends StatelessWidget {
                 "Ustaad's Gut-Check",
                 style: AppTextStyles.headlineMd.copyWith(
                   fontSize: 18,
-                  color: AppColors.inkText,
+                  color: textPrimary,
                 ),
               ),
             ],
@@ -643,7 +665,7 @@ class _GutCheckCard extends StatelessWidget {
           Text(
             'Is the AI missing something? Add your personal observation to improve future recommendations.',
             style: AppTextStyles.bodySm.copyWith(
-              color: AppColors.onSurfaceVariant,
+              color: textSecondary,
               fontStyle: FontStyle.italic,
             ),
           ),
@@ -651,23 +673,19 @@ class _GutCheckCard extends StatelessWidget {
           TextField(
             controller: controller,
             maxLines: 4,
-            style: AppTextStyles.bodyMd.copyWith(color: AppColors.inkText),
+            style: AppTextStyles.bodyMd.copyWith(color: textPrimary),
             decoration: InputDecoration(
               hintText: 'e.g., Student mentioned their parent was unwell...',
-              hintStyle: const TextStyle(color: AppColors.onSurfaceVariant),
+              hintStyle: TextStyle(color: textSecondary),
               filled: true,
-              fillColor: AppColors.surfaceBright,
+              fillColor: inputBg,
               border: OutlineInputBorder(
                 borderRadius: BorderRadius.circular(8),
-                borderSide: BorderSide(
-                  color: AppColors.outlineVariant.withValues(alpha: 0.5),
-                ),
+                borderSide: BorderSide(color: borderColor),
               ),
               enabledBorder: OutlineInputBorder(
                 borderRadius: BorderRadius.circular(8),
-                borderSide: BorderSide(
-                  color: AppColors.outlineVariant.withValues(alpha: 0.5),
-                ),
+                borderSide: BorderSide(color: borderColor),
               ),
               focusedBorder: OutlineInputBorder(
                 borderRadius: BorderRadius.circular(8),
@@ -691,8 +709,8 @@ class _GutCheckCard extends StatelessWidget {
                 }
               },
               style: ElevatedButton.styleFrom(
-                backgroundColor: AppColors.surfaceContainerHigh,
-                foregroundColor: AppColors.onSurface,
+                backgroundColor: AppColors.primary,
+                foregroundColor: Colors.white,
                 elevation: 0,
                 shape: const StadiumBorder(),
                 padding: const EdgeInsets.symmetric(horizontal: 20, vertical: 10),

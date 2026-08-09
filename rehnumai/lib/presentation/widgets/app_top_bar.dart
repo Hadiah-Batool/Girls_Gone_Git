@@ -20,9 +20,10 @@ class AppTopBar extends StatelessWidget implements PreferredSizeWidget {
     final initial = appState.teacherName.isNotEmpty
         ? appState.teacherName.trim()[0].toUpperCase()
         : 'T';
+    final bg = AppColors.getBg(context);
 
     return AppBar(
-      backgroundColor: AppColors.surfaceBright,
+      backgroundColor: bg,
       elevation: 0,
       scrolledUnderElevation: 0,
       leading: IconButton(
@@ -64,9 +65,10 @@ class AppTopBar extends StatelessWidget implements PreferredSizeWidget {
   }
 
   void _showProfileSheet(BuildContext context, AppState appState) {
+    final bg = AppColors.getBg(context);
     showModalBottomSheet(
       context: context,
-      backgroundColor: AppColors.surfaceBright,
+      backgroundColor: bg,
       shape: const RoundedRectangleBorder(
         borderRadius: BorderRadius.vertical(top: Radius.circular(20)),
       ),
@@ -136,6 +138,8 @@ class _TeacherProfileSheetState extends State<_TeacherProfileSheet> {
     final initial = appState.teacherName.isNotEmpty
         ? appState.teacherName.trim()[0].toUpperCase()
         : 'T';
+    final textPrimary = AppColors.getTextPrimary(context);
+    final textSecondary = AppColors.getTextSecondary(context);
 
     return Padding(
       padding: EdgeInsets.only(
@@ -149,20 +153,18 @@ class _TeacherProfileSheetState extends State<_TeacherProfileSheet> {
           mainAxisSize: MainAxisSize.min,
           crossAxisAlignment: CrossAxisAlignment.start,
           children: [
-            // Handle bar
             Center(
               child: Container(
                 width: 40,
                 height: 4,
                 decoration: BoxDecoration(
-                  color: AppColors.outlineVariant,
+                  color: AppColors.getBorderColor(context),
                   borderRadius: BorderRadius.circular(2),
                 ),
               ),
             ),
             const SizedBox(height: 20),
 
-            // Header row
             Row(
               children: [
                 CircleAvatar(
@@ -188,7 +190,7 @@ class _TeacherProfileSheetState extends State<_TeacherProfileSheet> {
                             : 'Teacher',
                         style: AppTextStyles.headlineMd.copyWith(
                           fontSize: 18,
-                          color: AppColors.inkText,
+                          color: textPrimary,
                         ),
                         maxLines: 1,
                         overflow: TextOverflow.ellipsis,
@@ -196,9 +198,9 @@ class _TeacherProfileSheetState extends State<_TeacherProfileSheet> {
                       if (appState.teacherOccupation.isNotEmpty)
                         Text(
                           appState.teacherOccupation,
-                          style: const TextStyle(
+                          style: TextStyle(
                             fontSize: 13,
-                            color: AppColors.onSurfaceVariant,
+                            color: textSecondary,
                           ),
                           maxLines: 1,
                           overflow: TextOverflow.ellipsis,
@@ -219,7 +221,6 @@ class _TeacherProfileSheetState extends State<_TeacherProfileSheet> {
             const SizedBox(height: 20),
 
             if (!_isEditing) ...[
-              // View mode — show profile info cards
               _ProfileInfoRow(
                 icon: Icons.cake_rounded,
                 label: 'Age',
@@ -258,7 +259,6 @@ class _TeacherProfileSheetState extends State<_TeacherProfileSheet> {
                 ),
               ),
             ] else ...[
-              // Edit mode — show form
               Form(
                 key: _formKey,
                 child: Column(
@@ -304,30 +304,34 @@ class _TeacherProfileSheetState extends State<_TeacherProfileSheet> {
     IconData icon, {
     TextInputType keyboardType = TextInputType.text,
   }) {
+    final textPrimary = AppColors.getTextPrimary(context);
+    final textSecondary = AppColors.getTextSecondary(context);
+    final inputBg = AppColors.getCardBg(context);
+    final borderColor = AppColors.getBorderColor(context);
+
     return TextFormField(
       controller: ctrl,
       keyboardType: keyboardType,
-      style: const TextStyle(color: AppColors.onSurface, fontSize: 15),
+      style: TextStyle(color: textPrimary, fontSize: 15),
       decoration: InputDecoration(
         labelText: label,
-        labelStyle: const TextStyle(color: AppColors.onSurfaceVariant),
+        labelStyle: TextStyle(color: textSecondary),
         prefixIcon: Icon(icon, color: AppColors.primary, size: 20),
         filled: true,
-        fillColor: AppColors.surfaceContainerLowest,
+        fillColor: inputBg,
         border: OutlineInputBorder(
           borderRadius: BorderRadius.circular(8),
-          borderSide: const BorderSide(color: AppColors.outlineVariant),
+          borderSide: BorderSide(color: borderColor),
         ),
         enabledBorder: OutlineInputBorder(
           borderRadius: BorderRadius.circular(8),
-          borderSide: const BorderSide(color: AppColors.outlineVariant),
+          borderSide: BorderSide(color: borderColor),
         ),
         focusedBorder: OutlineInputBorder(
           borderRadius: BorderRadius.circular(8),
           borderSide: const BorderSide(color: AppColors.primary, width: 2),
         ),
-        contentPadding:
-            const EdgeInsets.symmetric(horizontal: 12, vertical: 12),
+        contentPadding: const EdgeInsets.symmetric(horizontal: 12, vertical: 12),
       ),
       validator: (v) => v == null || v.isEmpty ? 'Required' : null,
     );
@@ -346,12 +350,17 @@ class _ProfileInfoRow extends StatelessWidget {
 
   @override
   Widget build(BuildContext context) {
+    final cardBg = AppColors.getCardBg(context);
+    final textPrimary = AppColors.getTextPrimary(context);
+    final textSecondary = AppColors.getTextSecondary(context);
+    final borderColor = AppColors.getBorderColor(context);
+
     return Container(
       padding: const EdgeInsets.symmetric(horizontal: 14, vertical: 12),
       decoration: BoxDecoration(
-        color: AppColors.surfaceContainerLowest,
+        color: cardBg,
         borderRadius: BorderRadius.circular(10),
-        border: Border.all(color: AppColors.outlineVariant.withValues(alpha: 0.5)),
+        border: Border.all(color: borderColor),
       ),
       child: Row(
         children: [
@@ -359,9 +368,9 @@ class _ProfileInfoRow extends StatelessWidget {
           const SizedBox(width: 12),
           Text(
             label,
-            style: const TextStyle(
+            style: TextStyle(
               fontSize: 13,
-              color: AppColors.onSurfaceVariant,
+              color: textSecondary,
               fontWeight: FontWeight.w500,
             ),
           ),
@@ -370,9 +379,9 @@ class _ProfileInfoRow extends StatelessWidget {
             child: Text(
               value,
               textAlign: TextAlign.end,
-              style: const TextStyle(
+              style: TextStyle(
                 fontSize: 14,
-                color: AppColors.inkText,
+                color: textPrimary,
                 fontWeight: FontWeight.w600,
               ),
               maxLines: 1,

@@ -1,14 +1,14 @@
 // lib/core/constants/app_colors.dart
 //
 // All color tokens from the Rehnumai design system.
-// Values match the Tailwind config in the HTML prototypes exactly.
+// Includes full support for both Light and Dark modes.
 
 import 'package:flutter/material.dart';
 
 class AppColors {
   AppColors._();
 
-  // ── Surface & Background ─────────────────────────────────────────────────
+  // ── Light Theme Tokens ───────────────────────────────────────────────────
   static const Color surfaceBright = Color(0xFFFFF8EF);
   static const Color surface = Color(0xFFFFF8EF);
   static const Color background = Color(0xFFFFF8EF);
@@ -22,6 +22,15 @@ class AppColors {
   static const Color surfaceContainerHighest = Color(0xFFECE2C9);
   static const Color inverseSurface = Color(0xFF35301F);
   static const Color inverseOnSurface = Color(0xFFFAF0D7);
+
+  // ── Dark Theme Tokens ────────────────────────────────────────────────────
+  static const Color darkSurfaceBright = Color(0xFF181512);
+  static const Color darkSurfaceContainerLowest = Color(0xFF26211D);
+  static const Color darkSurfaceContainerLow = Color(0xFF2F2924);
+  static const Color darkSandBg = Color(0xFF332B23);
+  static const Color darkInkText = Color(0xFFF7EFE6);
+  static const Color darkOnSurfaceVariant = Color(0xFFCFBFB0);
+  static const Color darkOutlineVariant = Color(0xFF4A3E34);
 
   // ── On-Surface ────────────────────────────────────────────────────────────
   static const Color onSurface = Color(0xFF201B0C);
@@ -95,4 +104,28 @@ class AppColors {
   static const Color divider = outlineVariant;
   static const Color accent = Color(0xFF735B0D);
   static const Color success = Color(0xFF84A98C);
+
+  // ── Theme Context Helpers ──────────────────────────────────────────────────
+  static bool isDark(BuildContext context) => Theme.of(context).brightness == Brightness.dark;
+
+  static Color getBg(BuildContext context) =>
+      isDark(context) ? darkSurfaceBright : surfaceBright;
+
+  static Color getCardBg(BuildContext context) =>
+      isDark(context) ? darkSurfaceContainerLowest : surfaceContainerLowest;
+
+  static Color getSandBg(BuildContext context) =>
+      isDark(context) ? darkSandBg : sandBg;
+
+  static Color getTextPrimary(BuildContext context) =>
+      isDark(context) ? darkInkText : inkText;
+
+  static Color getTextSecondary(BuildContext context) =>
+      isDark(context) ? darkOnSurfaceVariant : onSurfaceVariant;
+
+  static Color getOnSurfaceVariant(BuildContext context) =>
+      isDark(context) ? darkOnSurfaceVariant : onSurfaceVariant;
+
+  static Color getBorderColor(BuildContext context) =>
+      isDark(context) ? darkOutlineVariant : outlineVariant;
 }

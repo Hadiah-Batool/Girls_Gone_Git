@@ -1,8 +1,6 @@
 // lib/data/models/student_model.dart
 //
 // Pure Dart data models for the Rehnumai multi-agent risk analysis pipeline.
-// These classes are intentionally free of Isar annotations – they are used
-// exclusively in-memory to feed the OpenRouter LLM chain.
 
 /// A single daily attendance entry for a student.
 class AttendanceRecord {
@@ -21,6 +19,14 @@ class AttendanceRecord {
         'is_present': isPresent,
         if (note != null) 'note': note,
       };
+
+  factory AttendanceRecord.fromJson(Map<String, dynamic> json) {
+    return AttendanceRecord(
+      date: DateTime.tryParse(json['date'] as String? ?? '') ?? DateTime.now(),
+      isPresent: json['is_present'] as bool? ?? true,
+      note: json['note'] as String?,
+    );
+  }
 }
 
 /// A single fee record representing one billing cycle.
@@ -44,7 +50,6 @@ class FeeRecord {
           : paidDate!.isAfter(dueDate);
 
   /// Returns the number of days the payment was/is overdue.
-  /// Returns 0 if paid on time or not yet due.
   int get overdueDays {
     if (!isOverdue) return 0;
     final resolvedDate = paidDate ?? DateTime.now();
@@ -59,6 +64,15 @@ class FeeRecord {
         'is_overdue': isOverdue,
         'overdue_days': overdueDays,
       };
+
+  factory FeeRecord.fromJson(Map<String, dynamic> json) {
+    return FeeRecord(
+      dueDate: DateTime.tryParse(json['due_date'] as String? ?? '') ?? DateTime.now(),
+      paidDate: json['paid_date'] != null ? DateTime.tryParse(json['paid_date'] as String) : null,
+      amountDue: (json['amount_due'] as num?)?.toDouble() ?? 2500.0,
+      amountPaid: (json['amount_paid'] as num?)?.toDouble() ?? 0.0,
+    );
+  }
 }
 
 /// A soft qualitative note tagged by a teacher or coordinator.
@@ -78,12 +92,17 @@ class TaggedNote {
         'author_tag': authorTag,
         'content': content,
       };
+
+  factory TaggedNote.fromJson(Map<String, dynamic> json) {
+    return TaggedNote(
+      date: DateTime.tryParse(json['date'] as String? ?? '') ?? DateTime.now(),
+      authorTag: json['author_tag'] as String? ?? 'class_teacher',
+      content: json['content'] as String? ?? '',
+    );
+  }
 }
 
 /// The top-level student entity consumed by the agent orchestrator.
-///
-/// [examScores] maps each exam/test date to a percentage score (0–100).
-/// [teacherNotes] are soft qualitative observations from teachers.
 class Student {
   final String id;
   final String name;
@@ -125,9 +144,7 @@ class Student {
 
   // ── Serialisation ─────────────────────────────────────────────────────────
 
-  /// Converts the student to a JSON-safe map for embedding in LLM prompts.
   Map<String, dynamic> toJson() {
-    // Sort exam scores chronologically for readable prompt context
     final sortedScores = (examScores.entries.toList()
           ..sort((a, b) => a.key.compareTo(b.key)))
         .map(
@@ -142,13 +159,62 @@ class Student {
       'id': id,
       'name': name,
       'grade': grade,
-      'attendance_rate_pct': double.parse(attendanceRate.toStringAsFixed(1)),
-      'has_fee_overdue': hasFeeOverdue,
-      'latest_score': latestScore,
       'attendance': attendance.map((r) => r.toJson()).toList(),
       'fees': fees.map((f) => f.toJson()).toList(),
       'exam_scores': sortedScores,
       'teacher_notes': teacherNotes.map((n) => n.toJson()).toList(),
     };
+  }
+
+  factory Student.fromJson(Map<String, dynamic> json) {
+    final attendanceList = <AttendanceRecord>[];
+    if (json['attendance'] is List) {
+      for (final a in json['attendance'] as List) {
+        try {
+          attendanceList.add(AttendanceRecord.fromJson(a as Map<String, dynamic>));
+        } catch (_) {}
+      }
+    }
+
+    final feeList = <FeeRecord>[];
+    if (json['fees'] is List) {
+      for (final f in json['fees'] as List) {
+        try {
+          feeList.add(FeeRecord.fromJson(f as Map<String, dynamic>));
+        } catch (_) {}
+      }
+    }
+
+    final scoresMap = <DateTime, double>{};
+    if (json['exam_scores'] is List) {
+      for (final s in json['exam_scores'] as List) {
+        try {
+          final dt = DateTime.tryParse(s['date'] as String? ?? '');
+          final val = (s['score'] as num?)?.toDouble();
+          if (dt != null && val != null) {
+            scoresMap[dt] = val;
+          }
+        } catch (_) {}
+      }
+    }
+
+    final notesList = <TaggedNote>[];
+    if (json['teacher_notes'] is List) {
+      for (final n in json['teacher_notes'] as List) {
+        try {
+          notesList.add(TaggedNote.fromJson(n as Map<String, dynamic>));
+        } catch (_) {}
+      }
+    }
+
+    return Student(
+      id: json['id'] as String? ?? DateTime.now().millisecondsSinceEpoch.toString(),
+      name: json['name'] as String? ?? 'Student',
+      grade: json['grade'] as String? ?? 'Grade 8',
+      attendance: attendanceList,
+      fees: feeList,
+      examScores: scoresMap,
+      teacherNotes: notesList,
+    );
   }
 }
